@@ -4,7 +4,7 @@ This is the official repository for KSEF API Client for PHP: https://ksefapi.pl
 
 # Documentation
 
-The documentation and samples are available at https://ksefapi.pl/dokumentacja/
+The documentation and samples are available at https://ksefapi.pl/rest-ksef-api-dokumentacja/
 
 # License
 
