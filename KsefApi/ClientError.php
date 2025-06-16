@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright 2015-2024 NETCAT (www.netcat.pl)
+ * Copyright 2024-2025 NETCAT (www.netcat.pl)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,16 +15,16 @@
  * limitations under the License.
  *
  * @author NETCAT <firma@netcat.pl>
- * @copyright 2015-2024 NETCAT (www.netcat.pl)
+ * @copyright 2024-2025 NETCAT (www.netcat.pl)
  * @license http://www.apache.org/licenses/LICENSE-2.0
  */
 
 namespace KsefApi;
 
 /**
- * NIP24 errors
+ * KSEF API errors
  */
-class Error
+class ClientError
 {
     const CLI_INPUT        = 301;
 	const CLI_CONNECT      = 302;
@@ -34,9 +34,10 @@ class Error
     const CLI_SEND         = 306;
     const CLI_PKEY_ALG     = 307;
     const CLI_PKEY_FORMAT  = 308;
-    const CLI_RSA_ENCRYPT = 309;
-    const CLI_AES_ENCRYPT = 310;
-    const CLI_AES_DECRYPT = 311;
+    const CLI_RSA_ENCRYPT  = 309;
+    const CLI_AES_ENCRYPT  = 310;
+    const CLI_AES_DECRYPT  = 311;
+    const CLI_JSON         = 312;
 
 	private static $codes = array(
         self::CLI_INPUT        => 'Nieprawidłowy parametr wejściowy funkcji',
@@ -49,7 +50,8 @@ class Error
         self::CLI_PKEY_FORMAT  => 'Nieprawidłowy format klucza publicznego KSeF',
         self::CLI_RSA_ENCRYPT  => 'Nie udało się zaszyfrować klucza symetrycznego kluczem publicznym KSeF',
         self::CLI_AES_ENCRYPT  => 'Nie udało się zaszyfrować danych kluczem symetrycznym',
-        self::CLI_AES_DECRYPT  => 'Nie udało się odszyfrować danych kluczem symetrycznym'
+        self::CLI_AES_DECRYPT  => 'Nie udało się odszyfrować danych kluczem symetrycznym',
+        self::CLI_JSON         => 'Nie udała się konwersja JSON na obiekt modelu lub odwrotna'
     );
 
     /**
@@ -59,7 +61,7 @@ class Error
      */
 	public static function message(int $code)
     {
-	    if ($code < self::CLI_INPUT || $code > self::CLI_AES_DECRYPT) {
+	    if ($code < self::CLI_INPUT || $code > self::CLI_JSON) {
 	        return null;
         }
 

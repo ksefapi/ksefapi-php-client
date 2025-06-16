@@ -1,7 +1,7 @@
 {
   "name": "ksefapi/client",
   "description": "KSEF API Client for PHP",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "type": "library",
   "keywords": [
     "ksef",

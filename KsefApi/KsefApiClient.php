@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright 2023-2024 NETCAT (www.netcat.pl)
+ * Copyright 2024-2025 NETCAT (www.netcat.pl)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,13 +15,14 @@
  * limitations under the License.
  * 
  * @author NETCAT <firma@netcat.pl>
- * @copyright 2023-2024 NETCAT (www.netcat.pl)
+ * @copyright 2024-2025 NETCAT (www.netcat.pl)
  * @license http://www.apache.org/licenses/LICENSE-2.0
  */
 
 namespace KsefApi;
 
 use DateTime;
+use KsefApi\Model\Error;
 use KsefApi\Model\ErrorResult;
 use KsefApi\Model\Faktura;
 use KsefApi\Model\KsefInvoiceEncrypted;
@@ -46,7 +47,7 @@ use KsefApi\Model\KsefSessionStatusResponse;
  */
 class KsefApiClient
 {
-    const VERSION = '1.2.3';
+    const VERSION = '1.2.4';
 
     const PRODUCTION_URL = 'https://ksefapi.pl/api';
     const TEST_URL = 'https://ksefapi.pl/api-test';
@@ -59,8 +60,8 @@ class KsefApiClient
     private $key;
     private $app;
 
-    private $errcode;
-    private $err;
+    /** @var Error */
+    private $error;
 
     /**
      * Register KSEF API's PSR-0 autoloader
@@ -84,7 +85,7 @@ class KsefApiClient
     }
 
     /**
-     * Construct new service client object
+     * Construct a new service client object
      * @param string $url KSEF API URL (KsefApiClient::PRODUCTION_URL, KsefApiClient::TEST_URL or KsefApiClient::NIP24_URL)
      * @param string $id KSEF API key identifier
      * @param string $key KSEF API key
@@ -130,7 +131,7 @@ class KsefApiClient
     }
 
     /**
-     * Generate new AES256 key
+     * Generate a new AES256 key
      * @return string|false new key
      */
     public function generateKey()
@@ -157,18 +158,18 @@ class KsefApiClient
 
         $pk = openssl_pkey_get_public($pem);
         if (! $pk) {
-            $this->set(Error::CLI_PKEY_FORMAT);
+            $this->set(ClientError::CLI_PKEY_FORMAT);
             return false;
         }
 
         // encrypt
         if ($publicKey->getAlgorithm() === 'RSA') {
             if (!openssl_public_encrypt($key, $enc, $pk, OPENSSL_PKCS1_PADDING)) {
-                $this->set(Error::CLI_RSA_ENCRYPT);
+                $this->set(ClientError::CLI_RSA_ENCRYPT);
                 return false;
             }
         } else {
-            $this->set(Error::CLI_PKEY_ALG);
+            $this->set(ClientError::CLI_PKEY_ALG);
             return false;
         }
 
@@ -189,7 +190,7 @@ class KsefApiClient
 
         $enc = openssl_encrypt($data, self::ENC_ALG, $key, OPENSSL_RAW_DATA, $iv);
         if (! $enc) {
-            $this->set(Error::CLI_AES_ENCRYPT);
+            $this->set(ClientError::CLI_AES_ENCRYPT);
             return false;
         }
 
@@ -210,7 +211,7 @@ class KsefApiClient
 
         $data = openssl_decrypt($encrypted, self::ENC_ALG, $key, OPENSSL_RAW_DATA, $iv);
         if (! $data) {
-            $this->set(Error::CLI_AES_DECRYPT);
+            $this->set(ClientError::CLI_AES_DECRYPT);
             return false;
         }
 
@@ -272,8 +273,14 @@ class KsefApiClient
         // send request
         $req = new KsefSessionOpenRequest();
         $req->setInvoiceVersion($invoiceVersion);
-        $req->setInitVector($initVector);
-        $req->setEncryptedKey($encryptedKey);
+
+        if (!empty($initVector)) {
+            $req->setInitVector($initVector);
+        }
+
+        if (!empty($encryptedKey)) {
+            $req->setEncryptedKey($encryptedKey);
+        }
 
         $body = $this->sendObject($req);
         if (! $body) {
@@ -541,7 +548,7 @@ class KsefApiClient
     }
 
     /**
-     * Start new invoice query
+     * Start a new invoice query
      * @param string $sessionId session id
      * @param string $subjectType invoice subject type (subject1, subject2, subject3, subjectAuthorized)
      * @param DateTime $from begin of range
@@ -646,7 +653,7 @@ class KsefApiClient
      * @param string $invoice invoice XML data
      * @param bool $logo include logo
      * @param bool $qrcode include qr-code
-     * @param string $format output format (html or pdf)
+     * @param string $format output format (HTML or PDF)
      * @param string $lang output language (pl)
      * @return string|false invoice visualization in requested format
      */
@@ -680,22 +687,13 @@ class KsefApiClient
         return $res;
     }
 
-	/**
-     * Get last error code
-     * @return int error code
-     */
-    public function getLastErrorCode(): int
-    {
-        return $this->errcode;
-    }
-
     /**
-     * Get last error message
-     * @return string error message
+     * Get the last error message
+     * @return Error error message
      */
-    public function getLastError(): string
+    public function getLastError(): Error
     {
-        return $this->err;
+        return $this->error;
     }
 
     /**
@@ -703,19 +701,25 @@ class KsefApiClient
      */
     private function clear()
     {
-        $this->errcode = 0;
-        $this->err = '';
+        $this->error = null;
     }
 
     /**
-     * Set error details
+     * Set last error information
      * @param int $code error code
-     * @param string $err error message
+     * @param string|null $description error description
+     * @param string|null $details error details
      */
-    private function set(int $code, string $err = '')
+    private function set(int $code, string $description = null, string $details = null)
     {
-        $this->errcode = $code;
-        $this->err = (empty($err) ? Error::message($code) : $err);
+        $this->error = new Error();
+
+        $this->error->setCode($code);
+        $this->error->setDescription(empty($description) ? ClientError::message($code) : $description);
+
+        if (!empty($details)) {
+            $this->error->setDetails($details);
+        }
     }
 
     /**
@@ -798,7 +802,7 @@ class KsefApiClient
         $auth = $this->auth();
 
         if (! $auth) {
-            $this->set(Error::CLI_AUTH);
+            $this->set(ClientError::CLI_AUTH);
             return false;
         }
 
@@ -821,7 +825,7 @@ class KsefApiClient
         $curl = curl_init();
 
         if (! $curl) {
-            $this->set(Error::CLI_CONNECT);
+            $this->set(ClientError::CLI_CONNECT);
             return false;
         }
 
@@ -830,7 +834,6 @@ class KsefApiClient
         curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
 
         if ($post) {
-            error_log('Request: ' . print_r($body, true));
             curl_setopt($curl, CURLOPT_POSTFIELDS, $body);
         }
 
@@ -838,32 +841,31 @@ class KsefApiClient
         $res = curl_exec($curl);
 
         if (! $res) {
-            $this->set(Error::CLI_CONNECT, curl_error($curl));
+            $this->set(ClientError::CLI_CONNECT, null, curl_error($curl));
             return false;
         }
 
         if (!($code = curl_getinfo($curl, CURLINFO_HTTP_CODE))) {
-            $this->set(Error::CLI_CONNECT, curl_error($curl));
+            $this->set(ClientError::CLI_CONNECT, null, curl_error($curl));
             return false;
         }
 
         curl_close($curl);
 
         if ($code !== 200) {
-            error_log('Response: ' . print_r($res, true));
             $obj = json_decode($res, false);
 
             if (! $obj) {
-                $this->set(Error::CLI_RESPONSE);
+                $this->set(ClientError::CLI_RESPONSE);
                 return false;
             }
 
             $err = ObjectSerializer::deserialize($obj, '\KsefApi\Model\ErrorResult');
 
             if ($err instanceof ErrorResult && $err->getError()) {
-                $this->set($err->getError()->getCode(), $err->getError()->getDescription());
+                $this->set($err->getError()->getCode(), $err->getError()->getDescription(), $err->getError()->getDetails());
             } else {
-                $this->set(Error::CLI_RESPONSE);
+                $this->set(ClientError::CLI_RESPONSE);
             }
 
             return false;
@@ -873,7 +875,7 @@ class KsefApiClient
     }
 
     /**
-     * Convert class object into HTTP request
+     * Convert a class object into HTTP request
      * @param object $obj request object
      * @return string|false
      */
@@ -882,14 +884,14 @@ class KsefApiClient
         $body = ObjectSerializer::sanitizeForSerialization($obj);
 
         if (! $body) {
-            $this->set(Error::CLI_SEND);
+            $this->set(ClientError::CLI_SEND);
             return false;
         }
 
         $json = json_encode($body);
 
         if (! $json) {
-            $this->set(Error::CLI_SEND);
+            $this->set(ClientError::CLI_SEND);
             return false;
         }
 
@@ -897,7 +899,7 @@ class KsefApiClient
     }
 
     /**
-     * Convert HTTP response into class object
+     * Convert HTTP response into a class object
      * @param string $res HTTP response
      * @param string $class output object class name
      * @return object|false
@@ -907,14 +909,14 @@ class KsefApiClient
         $obj = json_decode($res, false);
 
         if (! $obj) {
-            $this->set(Error::CLI_RESPONSE);
+            $this->set(ClientError::CLI_RESPONSE);
             return false;
         }
 
         $cla = ObjectSerializer::deserialize($obj, $class);
 
         if (! $cla) {
-            $this->set(Error::CLI_RESPONSE);
+            $this->set(ClientError::CLI_RESPONSE);
             return false;
         }
 

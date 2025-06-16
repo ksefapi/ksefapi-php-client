@@ -16,8 +16,9 @@
 
     function err2json(\KsefApi\KsefApiClient $client) {
         $obj = new stdClass();
-        $obj->code = $client->getLastErrorCode();
-        $obj->description = $client->getLastError();
+        $obj->code = $client->getLastError()->getCode();
+        $obj->description = $client->getLastError()->getDescription();
+        $obj->details = $client->getLastError()->getDetails();
 
         http_response_code(400);
         header('Content-Type: application/json');
@@ -28,6 +29,7 @@
         $obj = new stdClass();
         $obj->code = $code;
         $obj->description = $description;
+        $obj->details = null;
 
         http_response_code(400);
         header('Content-Type: application/json');
