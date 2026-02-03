@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright 2024-2025 NETCAT (www.netcat.pl)
+ * Copyright 2024-2026 NETCAT (www.netcat.pl)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,22 +15,29 @@
  * limitations under the License.
  * 
  * @author NETCAT <firma@netcat.pl>
- * @copyright 2024-2025 NETCAT (www.netcat.pl)
+ * @copyright 2024-2026 NETCAT (www.netcat.pl)
  * @license http://www.apache.org/licenses/LICENSE-2.0
  */
 
 namespace KsefApi;
 
-use DateTime;
+use CurlHandle;
+use Exception;
+use KsefApi\Model\BoxDownloadInvoicesRequest;
+use KsefApi\Model\BoxDownloadInvoicesResponse;
+use KsefApi\Model\BoxUploadBatchRequest;
+use KsefApi\Model\BoxUploadBatchResponse;
+use KsefApi\Model\BoxUploadBatchStatusResponse;
+use KsefApi\Model\BoxUploadInvoiceRequest;
+use KsefApi\Model\BoxUploadInvoiceResponse;
+use KsefApi\Model\BoxUploadInvoiceStatusResponse;
 use KsefApi\Model\Error;
 use KsefApi\Model\ErrorResult;
 use KsefApi\Model\Faktura;
-use KsefApi\Model\KsefInvoiceEncrypted;
 use KsefApi\Model\KsefInvoiceGenerateRequest;
-use KsefApi\Model\KsefInvoicePlain;
-use KsefApi\Model\KsefInvoiceQueryStartRange;
 use KsefApi\Model\KsefInvoiceQueryStartRequest;
 use KsefApi\Model\KsefInvoiceQueryStartResponse;
+use KsefApi\Model\KsefInvoiceQueryStatusResponse;
 use KsefApi\Model\KsefInvoiceSendRequest;
 use KsefApi\Model\KsefInvoiceSendResponse;
 use KsefApi\Model\KsefInvoiceStatusResponse;
@@ -38,55 +45,37 @@ use KsefApi\Model\KsefInvoiceValidateResponse;
 use KsefApi\Model\KsefInvoiceVisualizeRequest;
 use KsefApi\Model\KsefPublicKeyResponse;
 use KsefApi\Model\KsefSessionCloseResponse;
-use KsefApi\Model\KsefSessionOpenRequest;
-use KsefApi\Model\KsefSessionOpenResponse;
+use KsefApi\Model\KsefSessionInvoicesResponse;
+use KsefApi\Model\KsefSessionOpenBatchRequest;
+use KsefApi\Model\KsefSessionOpenBatchResponse;
+use KsefApi\Model\KsefSessionOpenOnlineRequest;
+use KsefApi\Model\KsefSessionOpenOnlineResponse;
 use KsefApi\Model\KsefSessionStatusResponse;
+use phpseclib3\Crypt\AES;
+use phpseclib3\Crypt\PublicKeyLoader;
+use phpseclib3\Crypt\RSA;
+use SplFileObject;
 
 /**
  * KSEF API service client
  */
 class KsefApiClient
 {
-    const VERSION = '1.2.4';
+    const VERSION = '2.0.1';
 
     const PRODUCTION_URL = 'https://ksefapi.pl/api';
     const TEST_URL = 'https://ksefapi.pl/api-test';
-    const NIP24_URL = 'https://www.nip24.pl/api/ksef';
-    
-    const ENC_ALG = 'aes-256-cbc';
 
-    private $url;
-    private $id;
-    private $key;
-    private $app;
+    private string $url;
+    private string $id;
+    private string $key;
+    private string $app;
 
-    /** @var Error */
-    private $error;
-
-    /**
-     * Register KSEF API's PSR-0 autoloader
-     */
-    public static function registerAutoloader()
-    {
-        spl_autoload_register(__NAMESPACE__ . '\\KsefApiClient::autoload');
-    }
-
-    /**
-     * KSEF API PSR-0 autoloader
-     */
-    public static function autoload($className)
-    {
-        $className = str_replace('KsefApi\\', '', $className);
-        $path = __DIR__ . DIRECTORY_SEPARATOR . str_replace('\\', DIRECTORY_SEPARATOR, $className) . '.php';
-
-        if (file_exists($path)) {
-            require $path;
-        }
-    }
+    private ?Error $error;
 
     /**
      * Construct a new service client object
-     * @param string $url KSEF API URL (KsefApiClient::PRODUCTION_URL, KsefApiClient::TEST_URL or KsefApiClient::NIP24_URL)
+     * @param string $url KSEF API URL (KsefApiClient::PRODUCTION_URL, KsefApiClient::TEST_URL)
      * @param string $id KSEF API key identifier
      * @param string $key KSEF API key
      */
@@ -101,19 +90,10 @@ class KsefApiClient
     }
 
     /**
-     * Set non default service URL
-     * @param string $url service URL
-     */
-    public function setURL(string $url)
-    {
-        $this->url = $url;
-    }
-
-    /**
      * Set application info
      * @param string $app app info
      */
-    public function setApp(string $app)
+    public function setApp(string $app): void
     {
         $this->app = $app;
     }
@@ -122,7 +102,7 @@ class KsefApiClient
      * Generate new init vector for AES256
      * @return string|false new init vector
      */
-    public function generateInitVector()
+    public function generateInitVector(): string|false
     {
         // clear error
         $this->clear();
@@ -134,7 +114,7 @@ class KsefApiClient
      * Generate a new AES256 key
      * @return string|false new key
      */
-    public function generateKey()
+    public function generateKey(): string|false
     {
         // clear error
         $this->clear();
@@ -148,7 +128,7 @@ class KsefApiClient
      * @param string $key AES256 key to encrypt
      * @return string|false encrypted AES256 key
      */
-    public function encryptKey(KsefPublicKeyResponse $publicKey, string $key)
+    public function encryptKey(KsefPublicKeyResponse $publicKey, string $key): string|false
     {
         // clear error
         $this->clear();
@@ -156,15 +136,17 @@ class KsefApiClient
         // pkey object
         $pem = "-----BEGIN PUBLIC KEY-----\n" . $publicKey->getPublicKey() . "\n-----END PUBLIC KEY-----";
 
-        $pk = openssl_pkey_get_public($pem);
-        if (! $pk) {
+        try {
+            $pk = PublicKeyLoader::load($pem);
+        } catch (Exception) {
             $this->set(ClientError::CLI_PKEY_FORMAT);
             return false;
         }
 
         // encrypt
         if ($publicKey->getAlgorithm() === 'RSA') {
-            if (!openssl_public_encrypt($key, $enc, $pk, OPENSSL_PKCS1_PADDING)) {
+            $enc = $pk->withPadding(RSA::ENCRYPTION_OAEP)->withMGFHash('sha256')->withHash('sha256')->encrypt($key);
+            if (! $enc) {
                 $this->set(ClientError::CLI_RSA_ENCRYPT);
                 return false;
             }
@@ -183,12 +165,16 @@ class KsefApiClient
      * @param string $data data to encrypt
      * @return string|false encrypted data
      */
-    public function encryptData(string $iv, string $key, string $data)
+    public function encryptData(string $iv, string $key, string $data): string|false
     {
         // clear error
         $this->clear();
 
-        $enc = openssl_encrypt($data, self::ENC_ALG, $key, OPENSSL_RAW_DATA, $iv);
+        $aes = new AES('cbc');
+        $aes->setIV($iv);
+        $aes->setKey($key);
+
+        $enc = $aes->encrypt($data);
         if (! $enc) {
             $this->set(ClientError::CLI_AES_ENCRYPT);
             return false;
@@ -204,12 +190,16 @@ class KsefApiClient
      * @param string $encrypted encrypted data
      * @return string|false decrypted plain data
      */
-    public function decryptData(string $iv, string $key, string $encrypted)
+    public function decryptData(string $iv, string $key, string $encrypted): string|false
     {
         // clear error
         $this->clear();
 
-        $data = openssl_decrypt($encrypted, self::ENC_ALG, $key, OPENSSL_RAW_DATA, $iv);
+        $aes = new AES('cbc');
+        $aes->setIV($iv);
+        $aes->setKey($key);
+
+        $data = $aes->decrypt($encrypted);
         if (! $data) {
             $this->set(ClientError::CLI_AES_DECRYPT);
             return false;
@@ -235,7 +225,7 @@ class KsefApiClient
      * Get KSeF public key
      * @return KsefPublicKeyResponse|false KSeF public key for encryption
      */
-    public function ksefPublicKey()
+    public function ksefPublicKey(): KsefPublicKeyResponse|false
     {
         // clear error
         $this->clear();
@@ -259,35 +249,22 @@ class KsefApiClient
     }
 
     /**
-     * Open a new KSeF session
-     * @param string $invoiceVersion requested invoice schema version as KsefInvoiceVersion const value
-     * @param string|null $initVector optional AES256 init vector (base64, 32 chars)
-     * @param string|null $encryptedKey optional encrypted AES256 key (base64, 512 chars)
-     * @return KsefSessionOpenResponse|false session details
+     * Open a new KSeF online session
+     * @param KsefSessionOpenOnlineRequest $req request object
+     * @return KsefSessionOpenOnlineResponse|false session details
      */
-    public function ksefSessionOpen(string $invoiceVersion, string $initVector = null, string $encryptedKey = null)
+    public function ksefSessionOpenOnline(KsefSessionOpenOnlineRequest $req): KsefSessionOpenOnlineResponse|false
     {
         // clear error
         $this->clear();
 
         // send request
-        $req = new KsefSessionOpenRequest();
-        $req->setInvoiceVersion($invoiceVersion);
-
-        if (!empty($initVector)) {
-            $req->setInitVector($initVector);
-        }
-
-        if (!empty($encryptedKey)) {
-            $req->setEncryptedKey($encryptedKey);
-        }
-
         $body = $this->sendObject($req);
         if (! $body) {
             return false;
         }
 
-        $url = ($this->url . '/invoice/session/open');
+        $url = ($this->url . '/invoice/session/open/online');
 
         $res = $this->send($url, 'application/json', $body, array('application/json'));
         if (! $res) {
@@ -295,8 +272,42 @@ class KsefApiClient
         }
 
         // parse response
-        /** @var KsefSessionOpenResponse $obj */
-        $obj = $this->getObject($res, '\KsefApi\Model\KsefSessionOpenResponse');
+        /** @var KsefSessionOpenOnlineResponse $obj */
+        $obj = $this->getObject($res, '\KsefApi\Model\KsefSessionOpenOnlineResponse');
+
+        if (! $obj) {
+            return false;
+        }
+
+        return $obj;
+    }
+
+    /**
+     * Open a new KSeF batch session
+     * @param KsefSessionOpenBatchRequest $req request object
+     * @return KsefSessionOpenBatchResponse|false session details
+     */
+    public function ksefSessionOpenBatch(KsefSessionOpenBatchRequest $req): KsefSessionOpenBatchResponse|false
+    {
+        // clear error
+        $this->clear();
+
+        // send request
+        $body = $this->sendObject($req);
+        if (! $body) {
+            return false;
+        }
+
+        $url = ($this->url . '/invoice/session/open/batch');
+
+        $res = $this->send($url, 'application/json', $body, array('application/json'));
+        if (! $res) {
+            return false;
+        }
+
+        // parse response
+        /** @var KsefSessionOpenBatchResponse $obj */
+        $obj = $this->getObject($res, '\KsefApi\Model\KsefSessionOpenBatchResponse');
 
         if (! $obj) {
             return false;
@@ -308,9 +319,9 @@ class KsefApiClient
     /**
      * Get KSeF session status
      * @param string $sessionId session id
-     * @return string|false session status
+     * @return KsefSessionStatusResponse|false session status
      */
-    public function ksefSessionStatus(string $sessionId)
+    public function ksefSessionStatus(string $sessionId): KsefSessionStatusResponse|false
     {
         // clear error
         $this->clear();
@@ -331,7 +342,7 @@ class KsefApiClient
             return false;
         }
 
-        return $obj->getStatus();
+        return $obj;
     }
 
     /**
@@ -364,11 +375,40 @@ class KsefApiClient
     }
 
     /**
+     * Get session's invoices info
+     * @param string $sessionId session id
+     * @return KsefSessionInvoicesResponse|false list of invoices info
+     */
+    public function ksefSessionInvoices(string $sessionId): KsefSessionInvoicesResponse|false
+    {
+        // clear error
+        $this->clear();
+
+        // send request
+        $url = ($this->url . '/invoice/session/invoices/' . urlencode($sessionId));
+
+        $res = $this->send($url, null, null, array('application/json'));
+        if (! $res) {
+            return false;
+        }
+
+        // parse response
+        /** @var KsefSessionInvoicesResponse $obj */
+        $obj = $this->getObject($res, '\KsefApi\Model\KsefSessionInvoicesResponse');
+
+        if (! $obj) {
+            return false;
+        }
+
+        return $obj;
+    }
+
+    /**
      * Get UPO for specified session
      * @param string $sessionId session id
      * @return string|false XML with UPO
      */
-    public function ksefSessionUpo(string $sessionId)
+    public function ksefSessionUpo(string $sessionId): string|false
     {
         // clear error
         $this->clear();
@@ -390,7 +430,7 @@ class KsefApiClient
      * @param Faktura $invoice invoice object
      * @return string|false invoice XML
      */
-    public function ksefInvoiceGenerate(Faktura $invoice)
+    public function ksefInvoiceGenerate(Faktura $invoice): string|false
     {
         // clear error
         $this->clear();
@@ -420,7 +460,7 @@ class KsefApiClient
      * @param string $invoiceXml invoice XML
      * @return KsefInvoiceValidateResponse|false validation result
      */
-    public function ksefInvoiceValidate(string $invoiceXml)
+    public function ksefInvoiceValidate(string $invoiceXml): KsefInvoiceValidateResponse|false
     {
         // clear error
         $this->clear();
@@ -446,33 +486,15 @@ class KsefApiClient
 
     /**
      * Send an invoice
-     * @param string $sessionId session id
-     * @param int $size plain invoice size in bytes (only for encrypted data)
-     * @param string|null $hash plain invoice SHA256 hash (only for encrypted data)
-     * @param string $data plain or encrypted invoice data
+     * @param KsefInvoiceSendRequest $req request object
      * @return KsefInvoiceSendResponse|false sending result with invoice id
      */
-    public function ksefInvoiceSend(string $sessionId, int $size, ?string $hash, string $data)
+    public function ksefInvoiceSend(KsefInvoiceSendRequest $req): KsefInvoiceSendResponse|false
     {
         // clear error
         $this->clear();
 
         // send request
-        $req = new KsefInvoiceSendRequest();
-        $req->setSessionId($sessionId);
-
-        if (empty($size) && empty($hash)) {
-            $plain = new KsefInvoicePlain();
-            $plain->setInvoice(base64_encode($data));
-            $req->setPlain($plain);
-        } else {
-            $encrypted = new KsefInvoiceEncrypted();
-            $encrypted->setInvoiceSize($size);
-            $encrypted->setInvoiceHash(base64_encode($hash));
-            $encrypted->setEncryptedInvoice(base64_encode($data));
-            $req->setEncrypted($encrypted);
-        }
-
         $body = $this->sendObject($req);
         if (! $body) {
             return false;
@@ -501,7 +523,7 @@ class KsefApiClient
      * @param string $invoiceId invoice id
      * @return KsefInvoiceStatusResponse|false invoice status including KSeF ref number and acquisition timestamp
      */
-    public function ksefInvoiceStatus(string $invoiceId)
+    public function ksefInvoiceStatus(string $invoiceId): KsefInvoiceStatusResponse|false
     {
         // clear error
         $this->clear();
@@ -527,19 +549,18 @@ class KsefApiClient
 
     /**
      * Get an invoice
-     * @param string $sessionId session id
      * @param string $ksefRefNumber invoice KSeF reference number
-     * @return string|false invoice XML as plain or encrypted data (depends on session type)
+     * @return string|false invoice XML
      */
-    public function ksefInvoiceGet(string $sessionId, string $ksefRefNumber)
+    public function ksefInvoiceGet(string $ksefRefNumber): string|false
     {
         // clear error
         $this->clear();
 
         // send request
-        $url = ($this->url . '/invoice/get/' . urlencode($sessionId) . '/' . urlencode($ksefRefNumber));
+        $url = ($this->url . '/invoice/get/' . urlencode($ksefRefNumber));
 
-        $res = $this->send($url, null, null, array('application/octet-stream', 'text/xml', 'application/json'));
+        $res = $this->send($url, null, null, array('text/xml', 'application/json'));
         if (! $res) {
             return false;
         }
@@ -549,27 +570,15 @@ class KsefApiClient
 
     /**
      * Start a new invoice query
-     * @param string $sessionId session id
-     * @param string $subjectType invoice subject type (subject1, subject2, subject3, subjectAuthorized)
-     * @param DateTime $from begin of range
-     * @param DateTime $to end of range
+     * @param KsefInvoiceQueryStartRequest $req request object
      * @return string|false new query id
      */
-    public function ksefInvoiceQueryStart(string $sessionId, $subjectType, DateTime $from, DateTime $to)
+    public function ksefInvoiceQueryStart(KsefInvoiceQueryStartRequest $req): string|false
     {
         // clear error
         $this->clear();
 
         // send request
-        $range = new KsefInvoiceQueryStartRange();
-        $range->setFrom($from);
-        $range->setTo($to);
-
-        $req = new KsefInvoiceQueryStartRequest();
-        $req->setSessionId($sessionId);
-        $req->setSubjectType($subjectType);
-        $req->setRange($range);
-
         $body = $this->sendObject($req);
         if (! $body) {
             return false;
@@ -595,17 +604,16 @@ class KsefApiClient
 
     /**
      * Get current status of query
-     * @param string $sessionId session id
      * @param string $queryId query id
-     * @return array|false array of result parts numbers
+     * @return KsefInvoiceQueryStatusResponse|false array of result parts numbers
      */
-    public function ksefInvoiceQueryStatus(string $sessionId, string $queryId)
+    public function ksefInvoiceQueryStatus(string $queryId): KsefInvoiceQueryStatusResponse|false
     {
         // clear error
         $this->clear();
 
         // send request
-        $url = ($this->url . '/invoice/query/status/' . urlencode($sessionId) . '/' . urlencode($queryId));
+        $url = ($this->url . '/invoice/query/status/' . urlencode($queryId));
 
         $res = $this->send($url, null, null, array('application/json'));
         if (! $res) {
@@ -613,8 +621,8 @@ class KsefApiClient
         }
 
         // parse response
-        /** @var array $obj */
-        $obj = $this->getObject($res, 'string[]');
+        /** @var KsefInvoiceQueryStatusResponse $obj */
+        $obj = $this->getObject($res, '\KsefApi\Model\KsefInvoiceQueryStatusResponse');
 
         if (! $obj) {
             return false;
@@ -625,21 +633,19 @@ class KsefApiClient
 
     /**
      * Get data for specified query part
-     * @param string $sessionId session id
      * @param string $queryId query id
      * @param string $partNumber query part number
-     * @return string|false plain or encrypted ZIP archive with invoices (depends on session type)
+     * @return string|false encrypted ZIP archive with invoices (depends on session type)
      */
-    public function ksefInvoiceQueryResult(string $sessionId, string $queryId, string $partNumber)
+    public function ksefInvoiceQueryResult(string $queryId, string $partNumber): string|false
     {
         // clear error
         $this->clear();
 
         // send request
-        $url = ($this->url . '/invoice/query/result/' . urlencode($sessionId) . '/' . urlencode($queryId)
-            . '/' . urlencode($partNumber));
+        $url = ($this->url . '/invoice/query/result/' . urlencode($queryId) . '/' . urlencode($partNumber));
 
-        $res = $this->send($url, null, null, array('application/octet-stream', 'application/zip', 'application/json'));
+        $res = $this->send($url, null, null, array('application/octet-stream', 'application/json'));
         if (! $res) {
             return false;
         }
@@ -649,29 +655,15 @@ class KsefApiClient
 
     /**
      * Generate visualization of an invoice
-     * @param string $ksefRefNumber KSeF reference number
-     * @param string $invoice invoice XML data
-     * @param bool $logo include logo
-     * @param bool $qrcode include qr-code
-     * @param string $format output format (HTML or PDF)
-     * @param string $lang output language (pl)
+     * @param KsefInvoiceVisualizeRequest $req request object
      * @return string|false invoice visualization in requested format
      */
-    public function ksefInvoiceVisualize(string $ksefRefNumber, string $invoice, bool $logo, bool $qrcode,
-                                         string $format, string $lang)
+    public function ksefInvoiceVisualize(KsefInvoiceVisualizeRequest $req): string|false
     {
         // clear error
         $this->clear();
 
         // send request
-        $req = new KsefInvoiceVisualizeRequest();
-        $req->setIncludeLogo($logo);
-        $req->setIncludeQrCode($qrcode);
-        $req->setOutputFormat($format);
-        $req->setOutputLanguage($lang);
-        $req->setInvoiceKsefNumber($ksefRefNumber);
-        $req->setInvoiceData(base64_encode($invoice));
-
         $body = $this->sendObject($req);
         if (! $body) {
             return false;
@@ -688,10 +680,198 @@ class KsefApiClient
     }
 
     /**
-     * Get the last error message
-     * @return Error error message
+     * Upload plain invoice XML to KSeF
+     * @param BoxUploadInvoiceRequest $req request object
+     * @return bool upload result
      */
-    public function getLastError(): Error
+    public function boxUploadInvoice(BoxUploadInvoiceRequest $req): bool
+    {
+        // clear error
+        $this->clear();
+
+        // send request
+        $body = $this->sendObject($req);
+        if (! $body) {
+            return false;
+        }
+
+        $url = ($this->url . '/box/upload/invoice');
+
+        $res = $this->send($url, 'application/json', $body, array('application/json'));
+        if (! $res) {
+            return false;
+        }
+
+        // parse response
+        /** @var BoxUploadInvoiceResponse $obj */
+        $obj = $this->getObject($res, '\KsefApi\Model\BoxUploadInvoiceResponse');
+
+        if (! $obj) {
+            return false;
+        }
+
+        return $obj->getResult();
+    }
+
+    /**
+     * Get status of uploaded invoice
+     * @param string $uploadId upload identifier
+     * @return BoxUploadInvoiceStatusResponse|false upload result
+     */
+    public function boxUploadInvoiceStatus(string $uploadId): BoxUploadInvoiceStatusResponse|false
+    {
+        // clear error
+        $this->clear();
+
+        // send request
+        $url = ($this->url . '/box/upload/invoice/' . urlencode($uploadId));
+
+        $res = $this->send($url, null, null, array('application/json'));
+        if (! $res) {
+            return false;
+        }
+
+        // parse response
+        /** @var BoxUploadInvoiceStatusResponse $obj */
+        $obj = $this->getObject($res, '\KsefApi\Model\BoxUploadInvoiceStatusResponse');
+
+        if (! $obj) {
+            return false;
+        }
+
+        return $obj;
+    }
+
+    /**
+     * Upload batch of plain invoices XMLs to KSeF
+     * @param BoxUploadBatchRequest $req request object
+     * @param SplFileObject|string $file batch file data
+     * @return bool upload result
+     */
+    public function boxUploadBatch(BoxUploadBatchRequest $req, SplFileObject|string $file): bool
+    {
+        // clear error
+        $this->clear();
+
+        // boundary
+        if (!($bytes = $this->getRandomBytes(18))) {
+            return false;
+        }
+        $boundary = base64_encode($bytes);
+
+        // send request
+        $body = $this->sendObjectWithZip($boundary, $req, $file);
+        if ($body === false) {
+            return false;
+        }
+
+        $url = ($this->url . '/box/upload/batch');
+
+        $res = $this->send($url, 'multipart/form-data; boundary=' . $boundary, $body, array('application/json'));
+        if (! $res) {
+            return false;
+        }
+
+        // parse response
+        /** @var BoxUploadBatchResponse $obj */
+        $obj = $this->getObject($res, '\KsefApi\Model\BoxUploadBatchResponse');
+
+        if (! $obj) {
+            return false;
+        }
+
+        return $obj->getResult();
+    }
+
+    /**
+     * Get status of uploaded batch
+     * @param string $uploadId upload identifier
+     * @return BoxUploadBatchStatusResponse|false upload result
+     */
+    public function boxUploadBatchStatus(string $uploadId): BoxUploadBatchStatusResponse|false
+    {
+        // clear error
+        $this->clear();
+
+        // send request
+        $url = ($this->url . '/box/upload/batch/' . urlencode($uploadId));
+
+        $res = $this->send($url, null, null, array('application/json'));
+        if (! $res) {
+            return false;
+        }
+
+        // parse response
+        /** @var BoxUploadBatchStatusResponse $obj */
+        $obj = $this->getObject($res, '\KsefApi\Model\BoxUploadBatchStatusResponse');
+
+        if (! $obj) {
+            return false;
+        }
+
+        return $obj;
+    }
+
+    /**
+     * Send query for invoice download
+     * @param BoxDownloadInvoicesRequest $req request object
+     * @return bool sending result
+     */
+    public function boxDownloadInvoices(BoxDownloadInvoicesRequest $req): bool
+    {
+        // clear error
+        $this->clear();
+
+        // send request
+        $body = $this->sendObject($req);
+        if (! $body) {
+            return false;
+        }
+
+        $url = ($this->url . '/box/download/invoices');
+
+        $res = $this->send($url, 'application/json', $body, array('application/json'));
+        if (! $res) {
+            return false;
+        }
+
+        // parse response
+        /** @var BoxDownloadInvoicesResponse $obj */
+        $obj = $this->getObject($res, '\KsefApi\Model\BoxDownloadInvoicesResponse');
+
+        if (! $obj) {
+            return false;
+        }
+
+        return $obj->getResult();
+    }
+
+    /**
+     * Get status of download query
+     * @param string $downloadId download identifier
+     * @return string|false download result (ZIP archive)
+     */
+    public function boxDownloadInvoicesResult(string $downloadId): string|false
+    {
+        // clear error
+        $this->clear();
+
+        // send request
+        $url = ($this->url . '/box/download/invoices/' . urlencode($downloadId));
+
+        $res = $this->send($url, null, null, array('application/zip', 'application/json'));
+        if (! $res) {
+            return false;
+        }
+
+        return $res;
+    }
+
+    /**
+     * Get the last error message
+     * @return ?Error error message
+     */
+    public function getLastError(): ?Error
     {
         return $this->error;
     }
@@ -699,7 +879,7 @@ class KsefApiClient
     /**
      * Clear error
      */
-    private function clear()
+    private function clear(): void
     {
         $this->error = null;
     }
@@ -710,7 +890,7 @@ class KsefApiClient
      * @param string|null $description error description
      * @param string|null $details error details
      */
-    private function set(int $code, string $description = null, string $details = null)
+    private function set(int $code, ?string $description = null, ?string $details = null): void
     {
         $this->error = new Error();
 
@@ -727,29 +907,20 @@ class KsefApiClient
      * @param int $length bytes required
      * @return string|false random bytes
      */
-    private function getRandomBytes(int $length)
+    private function getRandomBytes(int $length): string|false
     {
-        // try 10 times
-        for ($i = 0; $i < 10; $i++) {
-            try {
-                $strong = false;
-                $bytes = openssl_random_pseudo_bytes($length, $strong);
-
-                if ($bytes && $strong) {
-                    return $bytes;
-                }
-            } catch (\Exception $e) {
-            }
+        try {
+            return random_bytes($length);
+        } catch (Exception) {
+            return false;
         }
-
-        return false;
     }
 
     /**
      * Prepare authorization header content
      * @return string|false
      */
-    private function auth()
+    private function auth(): string|false
     {
         // prepare auth header
         $basic = base64_encode($this->id . ':' . $this->key);
@@ -773,9 +944,9 @@ class KsefApiClient
 
     /**
      * Set some common CURL options
-     * @param resource $curl
+     * @param CurlHandle $curl
      */
-    private function setCurlOpt($curl)
+    private function setCurlOpt(CurlHandle $curl): void
     {
         if (strtoupper(substr(PHP_OS, 0, 3)) == 'WIN') {
             // curl on a windows does not know where to look for certificates
@@ -792,11 +963,11 @@ class KsefApiClient
      * Send HTTP request and read server's response
      * @param string $url target URL
      * @param string|null $type request content type (null for GET)
-     * @param string|null $body request body (null for GET)
+     * @param string|array|null $body request body (null for GET)
      * @param array $accept requested response MIME types
      * @return string|false
      */
-    private function send(string $url, ?string $type, ?string $body, array $accept)
+    private function send(string $url, string|null $type, string|array|null $body, array $accept): string|false
     {
         // auth
         $auth = $this->auth();
@@ -817,8 +988,17 @@ class KsefApiClient
         );
 
         if ($post) {
+            if (is_string($body)) {
+                $len = strlen($body);
+            } else if (is_array($body)) {
+                $len = strlen($body['prefix']) + $body['file']->getSize() + strlen($body['suffix']);
+            } else {
+                $this->set(ClientError::CLI_SEND);
+                return false;
+            }
+
             $headers[] = 'Content-Type: ' . $type;
-            $headers[] = 'Content-Length: ' . strlen($body);
+            $headers[] = 'Content-Length: ' . $len;
         }
 
         // send request
@@ -834,7 +1014,50 @@ class KsefApiClient
         curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
 
         if ($post) {
-            curl_setopt($curl, CURLOPT_POSTFIELDS, $body);
+            curl_setopt($curl, CURLOPT_CUSTOMREQUEST, 'POST');
+
+            if (is_string($body)) {
+                curl_setopt($curl, CURLOPT_POSTFIELDS, $body);
+            } else if (is_array($body)) {
+                curl_setopt($curl, CURLOPT_READFUNCTION, function($ch, $fd, $length) use (&$body) {
+                    if ($body['phase'] === 'prefix') {
+                        $data = substr($body['prefix'], 0, $length);
+                        $body['prefix'] = substr($body['prefix'], strlen($data));
+
+                        if (strlen($data) > 0) {
+                            return $data;
+                        } else {
+                            $body['phase'] = 'file';
+                        }
+                    }
+
+                    if ($body['phase'] === 'file') {
+                        $data = ($body['file']->eof() ? '' : $body['file']->fread($length));
+                        if ($data === false) {
+                            return false;
+                        }
+                        if (strlen($data) > 0) {
+                            return $data;
+                        } else {
+                            $body['phase'] = 'suffix';
+                        }
+                    }
+
+                    if ($body['phase'] === 'suffix') {
+                        $data = substr($body['suffix'], 0, $length);
+                        $body['suffix'] = substr($body['suffix'], strlen($data));
+
+                        if (strlen($data) > 0) {
+                            return $data;
+                        }
+                    }
+
+                    return '';
+                });
+            } else {
+                $this->set(ClientError::CLI_SEND);
+                return false;
+            }
         }
 
         $this->setCurlOpt($curl);
@@ -875,11 +1098,36 @@ class KsefApiClient
     }
 
     /**
+     * Convert HTTP response into a class object
+     * @param string $res HTTP response
+     * @param string $class output object class name
+     * @return object|false
+     */
+    private function getObject(string $res, string $class): object|false
+    {
+        $obj = json_decode($res, false);
+
+        if (! $obj) {
+            $this->set(ClientError::CLI_RESPONSE);
+            return false;
+        }
+
+        $cla = ObjectSerializer::deserialize($obj, $class);
+
+        if (! $cla) {
+            $this->set(ClientError::CLI_RESPONSE);
+            return false;
+        }
+
+        return $cla;
+    }
+
+    /**
      * Convert a class object into HTTP request
      * @param object $obj request object
      * @return string|false
      */
-    private function sendObject(object $obj)
+    private function sendObject(object $obj): string|false
     {
         $body = ObjectSerializer::sanitizeForSerialization($obj);
 
@@ -899,28 +1147,44 @@ class KsefApiClient
     }
 
     /**
-     * Convert HTTP response into a class object
-     * @param string $res HTTP response
-     * @param string $class output object class name
-     * @return object|false
+     * Convert a class object and ZIP file into multipart HTTP body
+     * @param string $boundary boundary name
+     * @param object $obj request object
+     * @param SplFileObject|string $file ZIP file content
+     * @return array|string|false
      */
-    private function getObject(string $res, string $class)
+    private function sendObjectWithZip(string $boundary, object $obj, SplFileObject|string $file): array|string|false
     {
-        $obj = json_decode($res, false);
-
-        if (! $obj) {
-            $this->set(ClientError::CLI_RESPONSE);
+        if (!($json = $this->sendObject($obj))) {
             return false;
         }
 
-        $cla = ObjectSerializer::deserialize($obj, $class);
+        $prefix = "--" . $boundary . "\r\n"
+            . "Content-Disposition: form-data; name=\"request\"\r\n"
+            . "Content-Type: application/json\r\n"
+            . "\r\n"
+            . $json . "\r\n"
+            . "--" . $boundary . "\r\n"
+            . "Content-Disposition: form-data; name=\"file\"; filename=\"batch.zip\"\r\n"
+            . "Content-Type: application/zip\r\n"
+            . "\r\n";
 
-        if (! $cla) {
-            $this->set(ClientError::CLI_RESPONSE);
+        $suffix = "\r\n"
+            . "--" . $boundary . "--\r\n";
+
+        if (is_string($file)) {
+            return ($prefix . $file . $suffix);
+        } else if ($file instanceof SplFileObject) {
+            return [
+                'phase' => 'prefix',
+                'prefix' => $prefix,
+                'file' => $file,
+                'suffix' => $suffix
+            ];
+        } else {
+            $this->set(ClientError::CLI_SEND);
             return false;
         }
-
-        return $cla;
     }
 }
 

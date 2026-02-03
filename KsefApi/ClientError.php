@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright 2024-2025 NETCAT (www.netcat.pl)
+ * Copyright 2024-2026 NETCAT (www.netcat.pl)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  * limitations under the License.
  *
  * @author NETCAT <firma@netcat.pl>
- * @copyright 2024-2025 NETCAT (www.netcat.pl)
+ * @copyright 2024-2026 NETCAT (www.netcat.pl)
  * @license http://www.apache.org/licenses/LICENSE-2.0
  */
 
@@ -26,20 +26,20 @@ namespace KsefApi;
  */
 class ClientError
 {
-    const CLI_INPUT        = 301;
-	const CLI_CONNECT      = 302;
-    const CLI_AUTH         = 303;
-	const CLI_RESPONSE     = 304;
-	const CLI_EXCEPTION    = 305;
-    const CLI_SEND         = 306;
-    const CLI_PKEY_ALG     = 307;
-    const CLI_PKEY_FORMAT  = 308;
-    const CLI_RSA_ENCRYPT  = 309;
-    const CLI_AES_ENCRYPT  = 310;
-    const CLI_AES_DECRYPT  = 311;
-    const CLI_JSON         = 312;
+    const CLI_INPUT        = 5001;
+	const CLI_CONNECT      = 5002;
+    const CLI_AUTH         = 5003;
+	const CLI_RESPONSE     = 5004;
+	const CLI_EXCEPTION    = 5005;
+    const CLI_SEND         = 5006;
+    const CLI_PKEY_ALG     = 5007;
+    const CLI_PKEY_FORMAT  = 5008;
+    const CLI_RSA_ENCRYPT  = 5009;
+    const CLI_AES_ENCRYPT  = 5010;
+    const CLI_AES_DECRYPT  = 5011;
+    const CLI_JSON         = 5012;
 
-	private static $codes = array(
+	private static array $codes = array(
         self::CLI_INPUT        => 'Nieprawidłowy parametr wejściowy funkcji',
 		self::CLI_CONNECT      => 'Nie udało się nawiązać połączenia z serwisem KSEF API',
         self::CLI_AUTH         => 'Niepoprawne dane do autoryzacji użytkownika',
@@ -59,7 +59,7 @@ class ClientError
      * @param int $code error code
      * @return string|null error message
      */
-	public static function message(int $code)
+	public static function message(int $code): ?string
     {
 	    if ($code < self::CLI_INPUT || $code > self::CLI_JSON) {
 	        return null;
