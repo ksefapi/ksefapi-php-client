@@ -1,6 +1,6 @@
 <?php
 /**
- * BoxUploadBatchStatusResponse
+ * FakturaZalacznik
  *
  * PHP version 8.1
  *
@@ -32,7 +32,7 @@ use \ArrayAccess;
 use \KsefApi\ObjectSerializer;
 
 /**
- * BoxUploadBatchStatusResponse Class Doc Comment
+ * FakturaZalacznik Class Doc Comment
  *
  * @category Class
  * @package  KsefApi
@@ -40,7 +40,7 @@ use \KsefApi\ObjectSerializer;
  * @link     https://openapi-generator.tech
  * @implements \ArrayAccess<string, mixed>
  */
-class BoxUploadBatchStatusResponse implements ModelInterface, ArrayAccess, \JsonSerializable
+class FakturaZalacznik implements ModelInterface, ArrayAccess, \JsonSerializable
 {
     public const DISCRIMINATOR = null;
 
@@ -49,7 +49,7 @@ class BoxUploadBatchStatusResponse implements ModelInterface, ArrayAccess, \Json
       *
       * @var string
       */
-    protected static $openAPIModelName = 'BoxUploadBatchStatusResponse';
+    protected static $openAPIModelName = 'Faktura_Zalacznik';
 
     /**
       * Array of property to type mappings. Used for (de)serialization
@@ -57,8 +57,7 @@ class BoxUploadBatchStatusResponse implements ModelInterface, ArrayAccess, \Json
       * @var string[]
       */
     protected static $openAPITypes = [
-        'upload_id' => 'string',
-        'invoice_info' => '\KsefApi\Model\InvoiceInfo[]'
+        'blok_danych' => '\KsefApi\Model\BlokDanych[]'
     ];
 
     /**
@@ -69,8 +68,7 @@ class BoxUploadBatchStatusResponse implements ModelInterface, ArrayAccess, \Json
       * @psalm-var array<string, string|null>
       */
     protected static $openAPIFormats = [
-        'upload_id' => null,
-        'invoice_info' => null
+        'blok_danych' => null
     ];
 
     /**
@@ -79,8 +77,7 @@ class BoxUploadBatchStatusResponse implements ModelInterface, ArrayAccess, \Json
       * @var boolean[]
       */
     protected static array $openAPINullables = [
-        'upload_id' => false,
-        'invoice_info' => false
+        'blok_danych' => false
     ];
 
     /**
@@ -169,8 +166,7 @@ class BoxUploadBatchStatusResponse implements ModelInterface, ArrayAccess, \Json
      * @var string[]
      */
     protected static $attributeMap = [
-        'upload_id' => 'uploadId',
-        'invoice_info' => 'invoiceInfo'
+        'blok_danych' => 'BlokDanych'
     ];
 
     /**
@@ -179,8 +175,7 @@ class BoxUploadBatchStatusResponse implements ModelInterface, ArrayAccess, \Json
      * @var string[]
      */
     protected static $setters = [
-        'upload_id' => 'setUploadId',
-        'invoice_info' => 'setInvoiceInfo'
+        'blok_danych' => 'setBlokDanych'
     ];
 
     /**
@@ -189,8 +184,7 @@ class BoxUploadBatchStatusResponse implements ModelInterface, ArrayAccess, \Json
      * @var string[]
      */
     protected static $getters = [
-        'upload_id' => 'getUploadId',
-        'invoice_info' => 'getInvoiceInfo'
+        'blok_danych' => 'getBlokDanych'
     ];
 
     /**
@@ -250,8 +244,7 @@ class BoxUploadBatchStatusResponse implements ModelInterface, ArrayAccess, \Json
      */
     public function __construct(?array $data = null)
     {
-        $this->setIfExists('upload_id', $data ?? [], null);
-        $this->setIfExists('invoice_info', $data ?? [], null);
+        $this->setIfExists('blok_danych', $data ?? [], null);
     }
 
     /**
@@ -281,12 +274,10 @@ class BoxUploadBatchStatusResponse implements ModelInterface, ArrayAccess, \Json
     {
         $invalidProperties = [];
 
-        if ($this->container['upload_id'] === null) {
-            $invalidProperties[] = "'upload_id' can't be null";
+        if (!is_null($this->container['blok_danych']) && (count($this->container['blok_danych']) > 1000)) {
+            $invalidProperties[] = "invalid value for 'blok_danych', number of items must be less than or equal to 1000.";
         }
-        if ($this->container['invoice_info'] === null) {
-            $invalidProperties[] = "'invoice_info' can't be null";
-        }
+
         return $invalidProperties;
     }
 
@@ -303,55 +294,32 @@ class BoxUploadBatchStatusResponse implements ModelInterface, ArrayAccess, \Json
 
 
     /**
-     * Gets upload_id
+     * Gets blok_danych
      *
-     * @return string
+     * @return \KsefApi\Model\BlokDanych[]|null
      */
-    public function getUploadId()
+    public function getBlokDanych()
     {
-        return $this->container['upload_id'];
+        return $this->container['blok_danych'];
     }
 
     /**
-     * Sets upload_id
+     * Sets blok_danych
      *
-     * @param string $upload_id upload_id
+     * @param \KsefApi\Model\BlokDanych[]|null $blok_danych blok_danych
      *
      * @return self
      */
-    public function setUploadId($upload_id)
+    public function setBlokDanych($blok_danych)
     {
-        if (is_null($upload_id)) {
-            throw new \InvalidArgumentException('non-nullable upload_id cannot be null');
+        if (is_null($blok_danych)) {
+            throw new \InvalidArgumentException('non-nullable blok_danych cannot be null');
         }
-        $this->container['upload_id'] = $upload_id;
 
-        return $this;
-    }
-
-    /**
-     * Gets invoice_info
-     *
-     * @return \KsefApi\Model\InvoiceInfo[]
-     */
-    public function getInvoiceInfo()
-    {
-        return $this->container['invoice_info'];
-    }
-
-    /**
-     * Sets invoice_info
-     *
-     * @param \KsefApi\Model\InvoiceInfo[] $invoice_info invoice_info
-     *
-     * @return self
-     */
-    public function setInvoiceInfo($invoice_info)
-    {
-        if (is_null($invoice_info)) {
-            throw new \InvalidArgumentException('non-nullable invoice_info cannot be null');
+        if ((count($blok_danych) > 1000)) {
+            throw new \InvalidArgumentException('invalid value for $blok_danych when calling FakturaZalacznik., number of items must be less than or equal to 1000.');
         }
-        $this->container['invoice_info'] = $invoice_info;
+        $this->container['blok_danych'] = $blok_danych;
 
         return $this;
     }

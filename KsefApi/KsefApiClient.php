@@ -61,7 +61,7 @@ use SplFileObject;
  */
 class KsefApiClient
 {
-    const VERSION = '2.0.1';
+    const VERSION = '2.0.2';
 
     const PRODUCTION_URL = 'https://ksefapi.pl/api';
     const TEST_URL = 'https://ksefapi.pl/api-test';
@@ -635,7 +635,7 @@ class KsefApiClient
      * Get data for specified query part
      * @param string $queryId query id
      * @param string $partNumber query part number
-     * @return string|false encrypted ZIP archive with invoices (depends on session type)
+     * @return string|false encrypted ZIP archive with invoices
      */
     public function ksefInvoiceQueryResult(string $queryId, string $partNumber): string|false
     {

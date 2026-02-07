@@ -1,6 +1,6 @@
 <?php
 /**
- * BoxUploadBatchStatusResponse
+ * ZMetaDane
  *
  * PHP version 8.1
  *
@@ -32,7 +32,7 @@ use \ArrayAccess;
 use \KsefApi\ObjectSerializer;
 
 /**
- * BoxUploadBatchStatusResponse Class Doc Comment
+ * ZMetaDane Class Doc Comment
  *
  * @category Class
  * @package  KsefApi
@@ -40,7 +40,7 @@ use \KsefApi\ObjectSerializer;
  * @link     https://openapi-generator.tech
  * @implements \ArrayAccess<string, mixed>
  */
-class BoxUploadBatchStatusResponse implements ModelInterface, ArrayAccess, \JsonSerializable
+class ZMetaDane implements ModelInterface, ArrayAccess, \JsonSerializable
 {
     public const DISCRIMINATOR = null;
 
@@ -49,7 +49,7 @@ class BoxUploadBatchStatusResponse implements ModelInterface, ArrayAccess, \Json
       *
       * @var string
       */
-    protected static $openAPIModelName = 'BoxUploadBatchStatusResponse';
+    protected static $openAPIModelName = 'ZMetaDane';
 
     /**
       * Array of property to type mappings. Used for (de)serialization
@@ -57,8 +57,8 @@ class BoxUploadBatchStatusResponse implements ModelInterface, ArrayAccess, \Json
       * @var string[]
       */
     protected static $openAPITypes = [
-        'upload_id' => 'string',
-        'invoice_info' => '\KsefApi\Model\InvoiceInfo[]'
+        'z_klucz' => 'string',
+        'z_wartosc' => 'string'
     ];
 
     /**
@@ -69,8 +69,8 @@ class BoxUploadBatchStatusResponse implements ModelInterface, ArrayAccess, \Json
       * @psalm-var array<string, string|null>
       */
     protected static $openAPIFormats = [
-        'upload_id' => null,
-        'invoice_info' => null
+        'z_klucz' => null,
+        'z_wartosc' => null
     ];
 
     /**
@@ -79,8 +79,8 @@ class BoxUploadBatchStatusResponse implements ModelInterface, ArrayAccess, \Json
       * @var boolean[]
       */
     protected static array $openAPINullables = [
-        'upload_id' => false,
-        'invoice_info' => false
+        'z_klucz' => false,
+        'z_wartosc' => false
     ];
 
     /**
@@ -169,8 +169,8 @@ class BoxUploadBatchStatusResponse implements ModelInterface, ArrayAccess, \Json
      * @var string[]
      */
     protected static $attributeMap = [
-        'upload_id' => 'uploadId',
-        'invoice_info' => 'invoiceInfo'
+        'z_klucz' => 'ZKlucz',
+        'z_wartosc' => 'ZWartosc'
     ];
 
     /**
@@ -179,8 +179,8 @@ class BoxUploadBatchStatusResponse implements ModelInterface, ArrayAccess, \Json
      * @var string[]
      */
     protected static $setters = [
-        'upload_id' => 'setUploadId',
-        'invoice_info' => 'setInvoiceInfo'
+        'z_klucz' => 'setZKlucz',
+        'z_wartosc' => 'setZWartosc'
     ];
 
     /**
@@ -189,8 +189,8 @@ class BoxUploadBatchStatusResponse implements ModelInterface, ArrayAccess, \Json
      * @var string[]
      */
     protected static $getters = [
-        'upload_id' => 'getUploadId',
-        'invoice_info' => 'getInvoiceInfo'
+        'z_klucz' => 'getZKlucz',
+        'z_wartosc' => 'getZWartosc'
     ];
 
     /**
@@ -250,8 +250,8 @@ class BoxUploadBatchStatusResponse implements ModelInterface, ArrayAccess, \Json
      */
     public function __construct(?array $data = null)
     {
-        $this->setIfExists('upload_id', $data ?? [], null);
-        $this->setIfExists('invoice_info', $data ?? [], null);
+        $this->setIfExists('z_klucz', $data ?? [], null);
+        $this->setIfExists('z_wartosc', $data ?? [], null);
     }
 
     /**
@@ -281,12 +281,22 @@ class BoxUploadBatchStatusResponse implements ModelInterface, ArrayAccess, \Json
     {
         $invalidProperties = [];
 
-        if ($this->container['upload_id'] === null) {
-            $invalidProperties[] = "'upload_id' can't be null";
+        if (!is_null($this->container['z_klucz']) && (mb_strlen($this->container['z_klucz']) > 256)) {
+            $invalidProperties[] = "invalid value for 'z_klucz', the character length must be smaller than or equal to 256.";
         }
-        if ($this->container['invoice_info'] === null) {
-            $invalidProperties[] = "'invoice_info' can't be null";
+
+        if (!is_null($this->container['z_klucz']) && (mb_strlen($this->container['z_klucz']) < 1)) {
+            $invalidProperties[] = "invalid value for 'z_klucz', the character length must be bigger than or equal to 1.";
         }
+
+        if (!is_null($this->container['z_wartosc']) && (mb_strlen($this->container['z_wartosc']) > 256)) {
+            $invalidProperties[] = "invalid value for 'z_wartosc', the character length must be smaller than or equal to 256.";
+        }
+
+        if (!is_null($this->container['z_wartosc']) && (mb_strlen($this->container['z_wartosc']) < 1)) {
+            $invalidProperties[] = "invalid value for 'z_wartosc', the character length must be bigger than or equal to 1.";
+        }
+
         return $invalidProperties;
     }
 
@@ -303,55 +313,69 @@ class BoxUploadBatchStatusResponse implements ModelInterface, ArrayAccess, \Json
 
 
     /**
-     * Gets upload_id
+     * Gets z_klucz
      *
-     * @return string
+     * @return string|null
      */
-    public function getUploadId()
+    public function getZKlucz()
     {
-        return $this->container['upload_id'];
+        return $this->container['z_klucz'];
     }
 
     /**
-     * Sets upload_id
+     * Sets z_klucz
      *
-     * @param string $upload_id upload_id
+     * @param string|null $z_klucz Typ znakowy ograniczony do 256 znaków
      *
      * @return self
      */
-    public function setUploadId($upload_id)
+    public function setZKlucz($z_klucz)
     {
-        if (is_null($upload_id)) {
-            throw new \InvalidArgumentException('non-nullable upload_id cannot be null');
+        if (is_null($z_klucz)) {
+            throw new \InvalidArgumentException('non-nullable z_klucz cannot be null');
         }
-        $this->container['upload_id'] = $upload_id;
+        if ((mb_strlen($z_klucz) > 256)) {
+            throw new \InvalidArgumentException('invalid length for $z_klucz when calling ZMetaDane., must be smaller than or equal to 256.');
+        }
+        if ((mb_strlen($z_klucz) < 1)) {
+            throw new \InvalidArgumentException('invalid length for $z_klucz when calling ZMetaDane., must be bigger than or equal to 1.');
+        }
+
+        $this->container['z_klucz'] = $z_klucz;
 
         return $this;
     }
 
     /**
-     * Gets invoice_info
+     * Gets z_wartosc
      *
-     * @return \KsefApi\Model\InvoiceInfo[]
+     * @return string|null
      */
-    public function getInvoiceInfo()
+    public function getZWartosc()
     {
-        return $this->container['invoice_info'];
+        return $this->container['z_wartosc'];
     }
 
     /**
-     * Sets invoice_info
+     * Sets z_wartosc
      *
-     * @param \KsefApi\Model\InvoiceInfo[] $invoice_info invoice_info
+     * @param string|null $z_wartosc Typ znakowy ograniczony do 256 znaków
      *
      * @return self
      */
-    public function setInvoiceInfo($invoice_info)
+    public function setZWartosc($z_wartosc)
     {
-        if (is_null($invoice_info)) {
-            throw new \InvalidArgumentException('non-nullable invoice_info cannot be null');
+        if (is_null($z_wartosc)) {
+            throw new \InvalidArgumentException('non-nullable z_wartosc cannot be null');
         }
-        $this->container['invoice_info'] = $invoice_info;
+        if ((mb_strlen($z_wartosc) > 256)) {
+            throw new \InvalidArgumentException('invalid length for $z_wartosc when calling ZMetaDane., must be smaller than or equal to 256.');
+        }
+        if ((mb_strlen($z_wartosc) < 1)) {
+            throw new \InvalidArgumentException('invalid length for $z_wartosc when calling ZMetaDane., must be bigger than or equal to 1.');
+        }
+
+        $this->container['z_wartosc'] = $z_wartosc;
 
         return $this;
     }

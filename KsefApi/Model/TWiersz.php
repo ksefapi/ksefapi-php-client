@@ -1,6 +1,6 @@
 <?php
 /**
- * BoxUploadBatchStatusResponse
+ * TWiersz
  *
  * PHP version 8.1
  *
@@ -32,7 +32,7 @@ use \ArrayAccess;
 use \KsefApi\ObjectSerializer;
 
 /**
- * BoxUploadBatchStatusResponse Class Doc Comment
+ * TWiersz Class Doc Comment
  *
  * @category Class
  * @package  KsefApi
@@ -40,7 +40,7 @@ use \KsefApi\ObjectSerializer;
  * @link     https://openapi-generator.tech
  * @implements \ArrayAccess<string, mixed>
  */
-class BoxUploadBatchStatusResponse implements ModelInterface, ArrayAccess, \JsonSerializable
+class TWiersz implements ModelInterface, ArrayAccess, \JsonSerializable
 {
     public const DISCRIMINATOR = null;
 
@@ -49,7 +49,7 @@ class BoxUploadBatchStatusResponse implements ModelInterface, ArrayAccess, \Json
       *
       * @var string
       */
-    protected static $openAPIModelName = 'BoxUploadBatchStatusResponse';
+    protected static $openAPIModelName = 'TWiersz';
 
     /**
       * Array of property to type mappings. Used for (de)serialization
@@ -57,8 +57,7 @@ class BoxUploadBatchStatusResponse implements ModelInterface, ArrayAccess, \Json
       * @var string[]
       */
     protected static $openAPITypes = [
-        'upload_id' => 'string',
-        'invoice_info' => '\KsefApi\Model\InvoiceInfo[]'
+        'w_kom' => 'string[]'
     ];
 
     /**
@@ -69,8 +68,7 @@ class BoxUploadBatchStatusResponse implements ModelInterface, ArrayAccess, \Json
       * @psalm-var array<string, string|null>
       */
     protected static $openAPIFormats = [
-        'upload_id' => null,
-        'invoice_info' => null
+        'w_kom' => null
     ];
 
     /**
@@ -79,8 +77,7 @@ class BoxUploadBatchStatusResponse implements ModelInterface, ArrayAccess, \Json
       * @var boolean[]
       */
     protected static array $openAPINullables = [
-        'upload_id' => false,
-        'invoice_info' => false
+        'w_kom' => false
     ];
 
     /**
@@ -169,8 +166,7 @@ class BoxUploadBatchStatusResponse implements ModelInterface, ArrayAccess, \Json
      * @var string[]
      */
     protected static $attributeMap = [
-        'upload_id' => 'uploadId',
-        'invoice_info' => 'invoiceInfo'
+        'w_kom' => 'WKom'
     ];
 
     /**
@@ -179,8 +175,7 @@ class BoxUploadBatchStatusResponse implements ModelInterface, ArrayAccess, \Json
      * @var string[]
      */
     protected static $setters = [
-        'upload_id' => 'setUploadId',
-        'invoice_info' => 'setInvoiceInfo'
+        'w_kom' => 'setWKom'
     ];
 
     /**
@@ -189,8 +184,7 @@ class BoxUploadBatchStatusResponse implements ModelInterface, ArrayAccess, \Json
      * @var string[]
      */
     protected static $getters = [
-        'upload_id' => 'getUploadId',
-        'invoice_info' => 'getInvoiceInfo'
+        'w_kom' => 'getWKom'
     ];
 
     /**
@@ -250,8 +244,7 @@ class BoxUploadBatchStatusResponse implements ModelInterface, ArrayAccess, \Json
      */
     public function __construct(?array $data = null)
     {
-        $this->setIfExists('upload_id', $data ?? [], null);
-        $this->setIfExists('invoice_info', $data ?? [], null);
+        $this->setIfExists('w_kom', $data ?? [], null);
     }
 
     /**
@@ -281,12 +274,10 @@ class BoxUploadBatchStatusResponse implements ModelInterface, ArrayAccess, \Json
     {
         $invalidProperties = [];
 
-        if ($this->container['upload_id'] === null) {
-            $invalidProperties[] = "'upload_id' can't be null";
+        if (!is_null($this->container['w_kom']) && (count($this->container['w_kom']) > 20)) {
+            $invalidProperties[] = "invalid value for 'w_kom', number of items must be less than or equal to 20.";
         }
-        if ($this->container['invoice_info'] === null) {
-            $invalidProperties[] = "'invoice_info' can't be null";
-        }
+
         return $invalidProperties;
     }
 
@@ -303,55 +294,32 @@ class BoxUploadBatchStatusResponse implements ModelInterface, ArrayAccess, \Json
 
 
     /**
-     * Gets upload_id
+     * Gets w_kom
      *
-     * @return string
+     * @return string[]|null
      */
-    public function getUploadId()
+    public function getWKom()
     {
-        return $this->container['upload_id'];
+        return $this->container['w_kom'];
     }
 
     /**
-     * Sets upload_id
+     * Sets w_kom
      *
-     * @param string $upload_id upload_id
+     * @param string[]|null $w_kom w_kom
      *
      * @return self
      */
-    public function setUploadId($upload_id)
+    public function setWKom($w_kom)
     {
-        if (is_null($upload_id)) {
-            throw new \InvalidArgumentException('non-nullable upload_id cannot be null');
+        if (is_null($w_kom)) {
+            throw new \InvalidArgumentException('non-nullable w_kom cannot be null');
         }
-        $this->container['upload_id'] = $upload_id;
 
-        return $this;
-    }
-
-    /**
-     * Gets invoice_info
-     *
-     * @return \KsefApi\Model\InvoiceInfo[]
-     */
-    public function getInvoiceInfo()
-    {
-        return $this->container['invoice_info'];
-    }
-
-    /**
-     * Sets invoice_info
-     *
-     * @param \KsefApi\Model\InvoiceInfo[] $invoice_info invoice_info
-     *
-     * @return self
-     */
-    public function setInvoiceInfo($invoice_info)
-    {
-        if (is_null($invoice_info)) {
-            throw new \InvalidArgumentException('non-nullable invoice_info cannot be null');
+        if ((count($w_kom) > 20)) {
+            throw new \InvalidArgumentException('invalid value for $w_kom when calling TWiersz., number of items must be less than or equal to 20.');
         }
-        $this->container['invoice_info'] = $invoice_info;
+        $this->container['w_kom'] = $w_kom;
 
         return $this;
     }
