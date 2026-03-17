@@ -35,6 +35,8 @@ use KsefApi\Model\Error;
 use KsefApi\Model\ErrorResult;
 use KsefApi\Model\Faktura;
 use KsefApi\Model\KsefInvoiceGenerateRequest;
+use KsefApi\Model\KsefInvoiceLinksRequest;
+use KsefApi\Model\KsefInvoiceLinksResponse;
 use KsefApi\Model\KsefInvoiceQueryStartRequest;
 use KsefApi\Model\KsefInvoiceQueryStartResponse;
 use KsefApi\Model\KsefInvoiceQueryStatusResponse;
@@ -61,7 +63,7 @@ use SplFileObject;
  */
 class KsefApiClient
 {
-    const VERSION = '2.0.2';
+    const VERSION = '2.0.3';
 
     const PRODUCTION_URL = 'https://ksefapi.pl/api';
     const TEST_URL = 'https://ksefapi.pl/api-test';
@@ -654,6 +656,40 @@ class KsefApiClient
     }
 
     /**
+     * Generate invoice URL links and QR codes
+     * @param KsefInvoiceLinksRequest $req request object
+     * @return KsefInvoiceLinksResponse|false URLs and QR codes
+     */
+    public function ksefInvoiceLinks(KsefInvoiceLinksRequest $req): KsefInvoiceLinksResponse|false
+    {
+        // clear error
+        $this->clear();
+
+        // send request
+        $body = $this->sendObject($req);
+        if (! $body) {
+            return false;
+        }
+
+        $url = ($this->url . '/invoice/links');
+
+        $res = $this->send($url, 'application/json', $body, array('application/json'));
+        if (! $res) {
+            return false;
+        }
+
+        // parse response
+        /** @var KsefInvoiceLinksResponse $obj */
+        $obj = $this->getObject($res, '\KsefApi\Model\KsefInvoiceLinksResponse');
+
+        if (! $obj) {
+            return false;
+        }
+
+        return $obj;
+    }
+
+    /**
      * Generate visualization of an invoice
      * @param KsefInvoiceVisualizeRequest $req request object
      * @return string|false invoice visualization in requested format
@@ -754,10 +790,10 @@ class KsefApiClient
         $this->clear();
 
         // boundary
-        if (!($bytes = $this->getRandomBytes(18))) {
+        if (!($bytes = $this->getRandomBytes(12))) {
             return false;
         }
-        $boundary = base64_encode($bytes);
+        $boundary = bin2hex($bytes);
 
         // send request
         $body = $this->sendObjectWithZip($boundary, $req, $file);
@@ -865,6 +901,70 @@ class KsefApiClient
         }
 
         return $res;
+    }
+
+    /**
+     * Poll until an asynchronous operation is ready
+     * @param callable $callback async function to call
+     * @param int $tries number of tries
+     * @param int $seconds delay between tries (in sec)
+     * @return mixed|false - value returned from callback or false in case of error
+     */
+    public function waitForResult(callable $callback, int $tries = 40, int $seconds = 15): mixed
+    {
+        for ($i = 0; $i < $tries; $i++) {
+            $res = $callback();
+
+            if ($res === false) {
+                if ($this->getLastError() !== null && ($this->getLastError()->getCode() == 100
+                        || $this->getLastError()->getCode() == 150)) {
+
+                    // still processing
+                    sleep($seconds);
+                    continue;
+                } else {
+                    // error
+                    return false;
+                }
+            } else if ($res === null) {
+                // error
+                return false;
+            }
+
+            if ($res instanceof KsefInvoiceStatusResponse) {
+                if ($res->getInvoiceInfo()->getStatus()->getCode() < 200) {
+                    // still processing
+                    sleep($seconds);
+                    continue;
+                } else if ($res->getInvoiceInfo()->getStatus()->getCode() == 200) {
+                    // ready
+                    return $res;
+                } else {
+                    // error
+                    return false;
+                }
+            } else if ($res instanceof KsefSessionStatusResponse) {
+                if ($res->getSessionInfo()->getStatus()->getCode() < 200
+                    && $res->getSessionInfo()->getStatus()->getCode() != 170) {
+
+                    // still processing
+                    sleep($seconds);
+                    continue;
+                } else if ($res->getSessionInfo()->getStatus()->getCode() == 200) {
+                    // ready
+                    return $res;
+                } else {
+                    // error
+                    return false;
+                }
+            } else {
+                // ready
+                return $res;
+            }
+        }
+
+        // timeout, no result
+        return false;
     }
 
     /**
@@ -993,7 +1093,7 @@ class KsefApiClient
             } else if (is_array($body)) {
                 $len = strlen($body['prefix']) + $body['file']->getSize() + strlen($body['suffix']);
             } else {
-                $this->set(ClientError::CLI_SEND);
+                $this->set(ClientError::CLI_INPUT);
                 return false;
             }
 
@@ -1055,7 +1155,7 @@ class KsefApiClient
                     return '';
                 });
             } else {
-                $this->set(ClientError::CLI_SEND);
+                $this->set(ClientError::CLI_INPUT);
                 return false;
             }
         }
@@ -1069,7 +1169,7 @@ class KsefApiClient
         }
 
         if (!($code = curl_getinfo($curl, CURLINFO_HTTP_CODE))) {
-            $this->set(ClientError::CLI_CONNECT, null, curl_error($curl));
+            $this->set(ClientError::CLI_SEND, null, curl_error($curl));
             return false;
         }
 
@@ -1079,7 +1179,7 @@ class KsefApiClient
             $obj = json_decode($res, false);
 
             if (! $obj) {
-                $this->set(ClientError::CLI_RESPONSE);
+                $this->set(ClientError::CLI_SEND);
                 return false;
             }
 
@@ -1132,14 +1232,14 @@ class KsefApiClient
         $body = ObjectSerializer::sanitizeForSerialization($obj);
 
         if (! $body) {
-            $this->set(ClientError::CLI_SEND);
+            $this->set(ClientError::CLI_INPUT);
             return false;
         }
 
         $json = json_encode($body);
 
         if (! $json) {
-            $this->set(ClientError::CLI_SEND);
+            $this->set(ClientError::CLI_INPUT);
             return false;
         }
 
@@ -1182,7 +1282,7 @@ class KsefApiClient
                 'suffix' => $suffix
             ];
         } else {
-            $this->set(ClientError::CLI_SEND);
+            $this->set(ClientError::CLI_INPUT);
             return false;
         }
     }

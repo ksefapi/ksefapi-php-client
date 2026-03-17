@@ -1,1169 +1,1113 @@
-<?php
-    // enable debug information
-    ini_set('display_errors', 1);
-    error_reporting(E_ALL);
-
-    // load ksefapi lib (and all dependencies)
-    require_once __DIR__ . '/../vendor/autoload.php';
-
-    // some helper functions
-    function obj2json($obj) {
-        header('Content-Type: application/json');
-        return json_encode(\KsefApi\ObjectSerializer::sanitizeForSerialization($obj));
-    }
-
-    function err2json(\KsefApi\KsefApiClient $client) {
-        $obj = new stdClass();
-        $obj->code = $client->getLastError()->getCode();
-        $obj->description = $client->getLastError()->getDescription();
-        $obj->details = $client->getLastError()->getDetails();
-
-        http_response_code(400);
-        header('Content-Type: application/json');
-        return json_encode($obj);
-    }
-
-    function code2json($code, $description) {
-        $obj = new stdClass();
-        $obj->code = $code;
-        $obj->description = $description;
-        $obj->details = null;
-
-        http_response_code(400);
-        header('Content-Type: application/json');
-        return json_encode($obj);
-    }
-
-    // new ksef api client
-    $ksef_api = new \KsefApi\KsefApiClient(\KsefApi\KsefApiClient::TEST_URL, 'enter valid api id here', 'enter valid api key here');
-
-    // backend functions (HTTP POST)
-    $fun = ($_SERVER['REQUEST_METHOD'] === 'POST' ? $_POST['fun'] : null);
-
-    if ($fun === 'generateInitVector') {
-        // generate new iv
-        $res_iv = $ksef_api->generateInitVector();
-        if ($res_iv) {
-            $obj = new stdClass();
-            $obj->iv = base64_encode($res_iv);
-            echo obj2json($obj);
-        } else {
-            echo err2json($ksef_api);
-        }
-        die();
-    } else if ($fun === 'generateKey') {
-        // generate new key
-        $res_k = $ksef_api->generateKey();
-        if ($res_k) {
-            $obj = new stdClass();
-            $obj->key = base64_encode($res_k);
-            echo obj2json($obj);
-        } else {
-            echo err2json($ksef_api);
-        }
-        die();
-    } else if ($fun === 'encryptKey') {
-        $pkey = new \KsefApi\Model\KsefPublicKeyResponse();
-        $pkey->setAlgorithm('RSA');
-        $pkey->setPublicKey($_POST['public_key']);
-        $res_ek = $ksef_api->encryptKey($pkey, base64_decode($_POST['key']));
-        if ($res_ek) {
-            $obj = new stdClass();
-            $obj->encryptedKey = base64_encode($res_ek);
-            echo obj2json($obj);
-        } else {
-            echo err2json($ksef_api);
-        }
-        die();
-    } else if ($fun === 'encryptData') {
-        $res_ed = $ksef_api->encryptData(base64_decode($_POST['iv']), base64_decode($_POST['key']),
-            base64_decode($_POST['data']));
-        if ($res_ed) {
-            $obj = new stdClass();
-            $obj->encryptedData = base64_encode($res_ed);
-            echo obj2json($obj);
-        } else {
-            echo err2json($ksef_api);
-        }
-        die();
-    } else if ($fun === 'decryptData') {
-        $res_dd = $ksef_api->decryptData(base64_decode($_POST['iv']), base64_decode($_POST['key']),
-            base64_decode($_POST['encrypted']));
-        if ($res_dd) {
-            $obj = new stdClass();
-            $obj->data = base64_encode($res_dd);
-            echo obj2json($obj);
-        } else {
-            echo err2json($ksef_api);
-        }
-        die();
-    } else if ($fun === 'getHash') {
-        $res_gh = $ksef_api->getHash(base64_decode($_POST['data']));
-        if ($res_gh) {
-            $obj = new stdClass();
-            $obj->hash = base64_encode($res_gh);
-            echo obj2json($obj);
-        } else {
-            echo err2json($ksef_api);
-        }
-        die();
-    } else if ($fun === 'ksefPublicKey') {
-        // get public key
-        $res_pk = $ksef_api->ksefPublicKey();
-        if ($res_pk) {
-            echo obj2json($res_pk);
-        } else {
-            echo err2json($ksef_api);
-        }
-        die();
-    } else if ($fun === 'ksefSessionOpen') {
-        // open session
-        $ei = new \KsefApi\Model\EncryptionInfo();
-        $ei->setInitVector($_POST['iv']);
-        $ei->setEncryptedKey($_POST['enc_key']);
-
-        $req = new \KsefApi\Model\KsefSessionOpenOnlineRequest();
-        $req->setInvoiceVersion(\KsefApi\Model\KsefInvoiceVersion::V3);
-        $req->setEncryptionInfo($ei);
-
-        $res_so = $ksef_api->ksefSessionOpenOnline($req);
-        if ($res_so) {
-            echo obj2json($res_so);
-        } else {
-            echo err2json($ksef_api);
-        }
-        die();
-    } else if ($fun === 'ksefSessionStatus') {
-        // session status
-        $res_ss = $ksef_api->ksefSessionStatus($_POST['session_id']);
-        if ($res_ss) {
-            echo obj2json($res_ss);
-        } else {
-            echo err2json($ksef_api);
-        }
-        die();
-    } else if ($fun === 'ksefSessionClose') {
-        // close session
-        $res_sc = $ksef_api->ksefSessionClose($_POST['session_id']);
-        if ($res_sc) {
-            $obj = new stdClass();
-            echo obj2json($obj);
-        } else {
-            echo err2json($ksef_api);
-        }
-        die();
-    } else if ($fun === 'ksefSessionUpo') {
-        // get upo
-        $res_su = $ksef_api->ksefSessionUpo($_POST['session_id']);
-        if ($res_su) {
-            $obj = new stdClass();
-            $obj->upo = base64_encode($res_su);
-            echo obj2json($obj);
-        } else {
-            echo err2json($ksef_api);
-        }
-        die();
-    } else if ($fun === 'ksefInvoiceGenerate') {
-        // generate invoice xml
-        $invoice = \KsefApi\ObjectSerializer::deserialize(
-                json_decode(base64_decode($_POST['invoice']), false),
-                '\KsefApi\Model\Faktura');
-        if (! $invoice instanceof \KsefApi\Model\Faktura) {
-            echo code2json(350, 'JSON faktury ma nieprawidłową składnię');
-            die();
-        }
-        $res_ig = $ksef_api->ksefInvoiceGenerate($invoice);
-        if ($res_ig) {
-            $obj = new stdClass();
-            $obj->xml = base64_encode($res_ig);
-            echo obj2json($obj);
-        } else {
-            echo err2json($ksef_api);
-        }
-        die();
-    } else if ($fun === 'ksefInvoiceValidate') {
-        // invoice validate
-        $res_iv = $ksef_api->ksefInvoiceValidate(base64_decode($_POST['invoice']));
-        if ($res_iv) {
-            echo obj2json($res_iv);
-        } else {
-            echo err2json($ksef_api);
-        }
-        die();
-    } else if ($fun === 'ksefInvoiceSend') {
-        // send invoice
-        $enc = new \KsefApi\Model\KsefInvoiceEncrypted();
-        $enc->setInvoiceSize($_POST['size']);
-        $enc->setInvoiceHash($_POST['hash']);
-        $enc->setEncryptedInvoice($_POST['data']);
-
-        $req = new \KsefApi\Model\KsefInvoiceSendRequest();
-        $req->setSessionId($_POST['session_id']);
-        $req->setEncrypted($enc);
-
-        $res_is = $ksef_api->ksefInvoiceSend($req);
-        if ($res_is) {
-            echo obj2json($res_is);
-        } else {
-            echo err2json($ksef_api);
-        }
-        die();
-    } else if ($fun === 'ksefInvoiceStatus') {
-        // invoice status
-        $res_is = $ksef_api->ksefInvoiceStatus($_POST['invoice_id']);
-        if ($res_is) {
-            echo obj2json($res_is);
-        } else {
-            echo err2json($ksef_api);
-        }
-        die();
-    } else if ($fun === 'ksefInvoiceGet') {
-        // invoice get
-        $res_ig = $ksef_api->ksefInvoiceGet($_POST['invoice_num']);
-        if ($res_ig) {
-            header('Content-Type: text/xml; charset=UTF-8');
-            header('Content-Disposition: attachment; filename="faktura.xml"');
-            echo $res_ig;
-        } else {
-            echo err2json($ksef_api);
-        }
-        die();
-    } else if ($fun === 'ksefInvoiceQueryStart') {
-        // start query
-        $ei = new \KsefApi\Model\EncryptionInfo();
-        $ei->setInitVector($_POST['iv']);
-        $ei->setEncryptedKey($_POST['enc_key']);
-
-        $range = new \KsefApi\Model\KsefInvoiceQueryStartRange();
-        $range->setFrom(DateTime::createFromFormat('Y-m-d', $_POST['from']));
-        $range->setTo(DateTime::createFromFormat('Y-m-d', $_POST['to']));
-
-        $req = new \KsefApi\Model\KsefInvoiceQueryStartRequest();
-        $req->setEncryptionInfo($ei);
-        $req->setSubjectType($_POST['subject_type']);
-        $req->setRange($range);
-
-        $res_iqs = $ksef_api->ksefInvoiceQueryStart($req);
-        if ($res_iqs) {
-            $obj = new stdClass();
-            $obj->queryId = $res_iqs;
-            echo obj2json($obj);
-        } else {
-            echo err2json($ksef_api);
-        }
-        die();
-    } else if ($fun === 'ksefInvoiceQueryStatus') {
-        // query status
-        $res_iqs = $ksef_api->ksefInvoiceQueryStatus($_POST['query_id']);
-        if ($res_iqs) {
-            echo obj2json($res_iqs);
-        } else {
-            echo err2json($ksef_api);
-        }
-        die();
-    } else if ($fun === 'ksefInvoiceQueryResult') {
-        // query result
-        $res_iqr = $ksef_api->ksefInvoiceQueryResult($_POST['query_id'], $_POST['part_num']);
-        if ($res_iqr) {
-            header('Content-Type: application/octet-stream');
-            header('Content-Length: ' . strlen($res_iqr));
-            header('Content-Disposition: attachment; filename="faktury.zip.aes"');
-            echo $res_iqr;
-        } else {
-            echo err2json($ksef_api);
-        }
-        die();
-    } else if ($fun === 'ksefInvoiceVisualize') {
-        // visualization
-        $req = new \KsefApi\Model\KsefInvoiceVisualizeRequest();
-        $req->setOffline(false);
-        $req->setInvoiceKsefNumber($_POST['invoice_num']);
-        $req->setInvoiceData($_POST['invoice']);
-        $req->setOutputFormat($_POST['format']);
-        $req->setOutputLanguage('pl');
-
-        $res_iv = $ksef_api->ksefInvoiceVisualize($req);
-        if ($res_iv) {
-            header('Content-Type: ' . $_POST['format'] === 'html' ? 'text/html; charset=UTF-8' : 'application/pdf');
-            header('Content-Disposition: attachment; filename="faktura.' . $_POST['format'] . '"');
-            echo $res_iv;
-        } else {
-            echo err2json($ksef_api);
-        }
-        die();
-    } else if ($fun === 'boxUploadInvoice') {
-        $req = new \KsefApi\Model\BoxUploadInvoiceRequest();
-        $req->setUploadId($_POST['upload_id']);
-        $req->setOffline($_POST['offline'] === 'true');
-        $req->setNotify(false);
-        $req->setInvoiceData($_POST['invoice']);
-
-        $res_ui = $ksef_api->boxUploadInvoice($req);
-        if ($res_ui) {
-            $obj = new stdClass();
-            $obj->result = true;
-            echo obj2json($obj);
-        } else {
-            echo err2json($ksef_api);
-        }
-        die();
-    } else if ($fun === 'boxUploadInvoiceStatus') {
-        $res_uis = $ksef_api->boxUploadInvoiceStatus($_POST['upload_id']);
-        if ($res_uis) {
-            echo obj2json($res_uis);
-        } else {
-            echo err2json($ksef_api);
-        }
-        die();
-    } else if ($fun === 'boxUploadBatch') {
-        $req = new \KsefApi\Model\BoxUploadBatchRequest();
-        $req->setUploadId($_POST['upload_id']);
-        $req->setOffline($_POST['offline'] === 'true');
-        $req->setNotify(false);
-        $req->setInvoiceVersion($_POST['invoice_version']);
-
-        $res_ub = $ksef_api->boxUploadBatch($req, base64_decode($_POST['batch']));
-        if ($res_ub) {
-            $obj = new stdClass();
-            $obj->result = true;
-            echo obj2json($obj);
-        } else {
-            echo err2json($ksef_api);
-        }
-        die();
-    } else if ($fun === 'boxUploadBatchStatus') {
-        $res_ubs = $ksef_api->boxUploadBatchStatus($_POST['upload_id']);
-        if ($res_ubs) {
-            echo obj2json($res_ubs);
-        } else {
-            echo err2json($ksef_api);
-        }
-        die();
-    } else if ($fun === 'boxDownloadInvoices') {
-        $range = new \KsefApi\Model\KsefInvoiceQueryStartRange();
-        $range->setFrom(DateTime::createFromFormat('Y-m-d', $_POST['from']));
-        $range->setTo(DateTime::createFromFormat('Y-m-d', $_POST['to']));
-
-        $req = new \KsefApi\Model\BoxDownloadInvoicesRequest();
-        $req->setDownloadId($_POST['download_id']);
-        $req->setNotify(false);
-        $req->setSubjectType($_POST['subject_type']);
-        $req->setRange($range);
-
-        $res_di = $ksef_api->boxDownloadInvoices($req);
-        $obj = new stdClass();
-        $obj->result = $res_di;
-        echo obj2json($obj);
-        die();
-    } else if ($fun === 'boxDownloadInvoicesResult') {
-        $res_dir = $ksef_api->boxDownloadInvoicesResult($_POST['download_id']);
-        if ($res_dir) {
-            header('Content-Type: application/zip');
-            header('Content-Length: ' . strlen($res_dir));
-            header('Content-Disposition: attachment; filename="faktury.zip"');
-            echo $res_dir;
-        } else {
-            echo err2json($ksef_api);
-        }
-        die();
-    }
-?>
 <!doctype html>
-<html lang="pl">
-	<head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>KSEF API Client for PHP</title>
+</head>
+<body>
+<?php
+/**
+ * Copyright 2025-2026 NETCAT (www.netcat.pl)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ * @author NETCAT <firma@netcat.pl>
+ * @copyright 2025-2026 NETCAT (www.netcat.pl)
+ * @license http://www.apache.org/licenses/LICENSE-2.0
+ */
 
-        <title>KSEF API Client - Przykład użycia</title>
+use KsefApi\KsefApiClient;
+use KsefApi\Model\Adnotacje;
+use KsefApi\Model\BatchInfo;
+use KsefApi\Model\BatchPartInfo;
+use KsefApi\Model\BoxDownloadInvoicesRequest;
+use KsefApi\Model\BoxUploadBatchRequest;
+use KsefApi\Model\BoxUploadInvoiceRequest;
+use KsefApi\Model\EncryptionInfo;
+use KsefApi\Model\Fa;
+use KsefApi\Model\Faktura;
+use KsefApi\Model\FaWiersz;
+use KsefApi\Model\InvoiceInfo;
+use KsefApi\Model\KsefInvoiceEncrypted;
+use KsefApi\Model\KsefInvoiceLinksRequest;
+use KsefApi\Model\KsefInvoiceQueryStartRange;
+use KsefApi\Model\KsefInvoiceQueryStartRequest;
+use KsefApi\Model\KsefInvoiceSendRequest;
+use KsefApi\Model\KsefInvoiceVersion;
+use KsefApi\Model\KsefInvoiceVisualizeRequest;
+use KsefApi\Model\KsefSessionOpenBatchRequest;
+use KsefApi\Model\KsefSessionOpenOnlineRequest;
+use KsefApi\Model\NoweSrodkiTransportu;
+use KsefApi\Model\Platnosc;
+use KsefApi\Model\PMarzy;
+use KsefApi\Model\Podmiot1;
+use KsefApi\Model\Podmiot2;
+use KsefApi\Model\TAdres;
+use KsefApi\Model\TKodFormularza;
+use KsefApi\Model\TKodKraju;
+use KsefApi\Model\TKodWaluty;
+use KsefApi\Model\TNaglowek;
+use KsefApi\Model\TPodmiot1;
+use KsefApi\Model\TPodmiot2;
+use KsefApi\Model\TRodzajFaktury;
+use KsefApi\Model\TStawkaPodatku;
+use KsefApi\Model\TFormaPlatnosci;
+use KsefApi\Model\WariantFormularza;
+use KsefApi\Model\Zwolnienie;
 
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-        <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-	</head>
+// load ksefapi lib (and all dependencies)
+require_once __DIR__ . '/../vendor/autoload.php';
 
-	<body>
-        <div class="container">
-            <form>
-                <div class="row mb-3">
-                    <div class="col">
-                        <h3>Klucz publiczny KSeF</h3>
-                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col">
-                        <button id="pkey-get" type="button" class="btn btn-sm btn-primary">Pobierz klucz</button>
-                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col">
-                        <label for="pkey" class="form-label">Klucz publiczny (ASN.1 SubjectPublicKeyInfo w base64)</label>
-                        <input id="pkey" type="text" class="form-control">
-                        <div id="pkey-err" class="text-danger"></div>
-                    </div>
-                </div>
+// enable debug information
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
 
-                <div class="row mb-3">
-                    <div class="col">
-                        <h3>Zarządzanie sesją</h3>
-                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col">
-                        <label for="session-iv" class="form-label">Init vector</label>
-                        <input id="session-iv" type="text" class="form-control">
-                    </div>
-                    <div class="col">
-                        <label for="session-key" class="form-label">Klucz AES256</label>
-                        <input id="session-key" type="text" class="form-control">
-                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col">
-                        <button id="session-new-ivkey" type="button" class="btn btn-sm btn-primary">Nowy init vector i klucz</button>
-                        <button id="session-new" type="button" class="btn btn-sm btn-primary">Nowa sesja online</button>
-                        <button id="session-check" type="button" class="btn btn-sm btn-primary">Status sesji</button>
-                        <button id="session-close" type="button" class="btn btn-sm btn-primary">Zamknij sesję</button>
-                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col">
-                        <label for="session-id" class="form-label">ID sesji</label>
-                        <input id="session-id" type="text" class="form-control">
-                        <div id="session-status" class="text-success"></div>
-                    </div>
-                    <div class="col">
-                        <label for="session-enc-key" class="form-label">Zaszyfrowany klucz AES256</label>
-                        <input id="session-enc-key" type="text" class="form-control">
-                    </div>
-                </div>
+/**
+ * Print a line of example output
+ */
+function out(string $message): void
+{
+    echo '<pre>' . $message . '</pre>' . PHP_EOL;
+}
 
-                <div class="row mb-3">
-                    <div class="col">
-                        <h3>Wysyłanie faktury</h3>
-                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col">
-                        <label for="invoice" class="form-label">Faktura (XML, należy dostosować dane przed wysłaniem)</label>
-                        <textarea id="invoice" class="form-control"></textarea>
-                        <div id="invoice-status" class="text-success"></div>
-                        <div id="invoice-err" class="text-danger"></div>
-                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col">
-                        <button id="invoice-validate" type="button" class="btn btn-sm btn-primary">Weryfikuj XML faktury</button>
-                        <button id="invoice-send" type="button" class="btn btn-sm btn-primary">Wyślij fakturę</button>
-                        <button id="invoice-check" type="button" class="btn btn-sm btn-primary">Status faktury</button>
-                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col">
-                        <label for="invoice-id" class="form-label">ID faktury (otrzymany po wysłaniu faktury)</label>
-                        <input id="invoice-id" type="text" class="form-control">
-                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col">
-                        <label for="invoice-num" class="form-label">Numer faktury nadany przez KSeF (po sprawdzeniu statusu faktury)</label>
-                        <input id="invoice-num" type="text" class="form-control">
-                    </div>
-                    <div class="col">
-                        <label for="invoice-date" class="form-label">Data faktury nadana przez KSeF (po sprawdzeniu statusu faktury)</label>
-                        <input id="invoice-date" type="text" class="form-control">
-                    </div>
-                </div>
+/**
+ * Print object as JSON
+ * @param mixed $object the object
+ * @return string JSON string
+ */
+function printObject(mixed $object): string
+{
+    return json_encode($object, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+}
 
-                <div class="row mb-3">
-                    <div class="col">
-                        <h3>UPO</h3>
-                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col">
-                        <button id="session-upo" type="button" class="btn btn-sm btn-primary">Pobierz UPO</button>
-                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col">
-                        <label for="upo" class="form-label">UPO (XML, tylko dla zamkniętej sesji, w której zostały wysłane jakieś faktury)</label>
-                        <textarea id="upo" class="form-control"></textarea>
-                    </div>
-                </div>
+/**
+ * Example program
+ */
+class Program {
 
-                <div class="row mb-3">
-                    <div class="col">
-                        <h3>Pobieranie faktury</h3>
-                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col">
-                        <label for="get-invoice-num" class="form-label">Numer faktury nadany przez KSeF</label>
-                        <input id="get-invoice-num" type="text" class="form-control">
-                        <div id="get-invoice-err" class="text-danger"></div>
-                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col">
-                        <button id="get-invoice" type="button" class="btn btn-sm btn-primary">Pobierz fakturę</button>
-                    </div>
-                </div>
+    private DateTimeImmutable $now;
+    private string $sellerNip;
+    private string $sellerName;
+    private int $invoiceNumber;
 
-                <div class="row mb-3">
-                    <div class="col">
-                        <h3>Wyszukiwanie faktur</h3>
-                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col">
-                        <label for="query-subject" class="form-label">Typ podmiotu</label>
-                        <select id="query-subject" class="form-select">
-                            <option value="Subject1">Subject1 (Podmiot 1 - sprzedawca)</option>
-                            <option value="Subject2">Subject2 (Podmiot 2 - nabywca)</option>
-                            <option value="Subject3">Subject3 (Podmiot 3)</option>
-                            <option value="SubjectAuthorized">SubjectAuthorized (Podmiot upoważniony)</option>
-                        </select>
-                        <div id="query-err" class="text-danger"></div>
-                    </div>
-                    <div class="col">
-                        <label for="query-from" class="form-label">Data od (yyyy-mm-dd)</label>
-                        <input id="query-from" type="text" class="form-control" value="<?= date('Y-m-d') ?>">
-                    </div>
-                    <div class="col">
-                        <label for="query-to" class="form-label">Data do (yyyy-mm-dd)</label>
-                        <input id="query-to" type="text" class="form-control" value="<?= date('Y-m-d') ?>">
-                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col">
-                        <button id="query-start" type="button" class="btn btn-sm btn-primary">Rozpocznij wyszukiwanie</button>
-                        <button id="query-status" type="button" class="btn btn-sm btn-primary">Status zapytania</button>
-                        <button id="query-result" type="button" class="btn btn-sm btn-primary">Pobierz wynik</button>
-                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col">
-                        <label for="query-id" class="form-label">ID zapytania</label>
-                        <input id="query-id" type="text" class="form-control">
-                    </div>
-                    <div class="col">
-                        <label for="query-part" class="form-label">Numer części wyniku</label>
-                        <select id="query-part" class="form-select"></select>
-                    </div>
-                </div>
+    private KsefApiClient $ksefApi;
 
-                <div class="row mb-3">
-                    <div class="col">
-                        <h3>Wizualizacja faktury</h3>
-                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col">
-                        <label for="invoice-format" class="form-label">Format</label>
-                        <select id="invoice-format" class="form-select">
-                            <option value="html">HTML</option>
-                            <option value="pdf">PDF</option>
-                        </select>
-                        <div id="invoice-visualize-err" class="text-danger"></div>
-                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col">
-                        <button id="invoice-visualize" type="button" class="btn btn-sm btn-primary">Wizualizacja faktury</button>
-                    </div>
-                </div>
+    private string $iv;
+    private string $sKey;
+    private string $encKey;
+    private ?string $ksefNumber;
 
-                <hr/>
+    /**
+     * Construct new object
+     */
+    public function __construct() {
+        // set some basic data
+        $this->now = new DateTimeImmutable();
 
-                <div class="row mb-3">
-                    <div class="col">
-                        <h3>Black Box - Wysłanie faktury</h3>
-                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col">
-                        <label for="upload-invoice-id" class="form-label">ID wysyłki (unikalne ID nadane przez użytkownika)</label>
-                        <input id="upload-invoice-id" type="text" class="form-control">
-                    </div>
-                    <div class="col">
-                        <label for="upload-invoice-offline" class="form-label">Tryb przesyłania</label>
-                        <select id="upload-invoice-offline" class="form-select">
-                            <option value="false" selected>Online</option>
-                            <option value="true">Offline</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col">
-                        <button id="upload-invoice-id-new" type="button" class="btn btn-sm btn-primary">Nowe ID</button>
-                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col">
-                        <label for="upload-invoice-file" class="form-label">Faktura (plik XML)</label>
-                        <input id="upload-invoice-file" type="file" accept=".xml" class="form-control"/>
-                        <div id="upload-invoice-res" class="text-success"></div>
-                        <div id="upload-invoice-err" class="text-danger"></div>
-                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col">
-                        <button id="upload-invoice" type="button" class="btn btn-sm btn-primary">Wyślij fakturę</button>
-                        <button id="upload-invoice-status" type="button" class="btn btn-sm btn-primary">Sprawdź status wysyłki</button>
-                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col">
-                        <label for="upload-invoice-num" class="form-label">Numer faktury nadany przez KSeF (po sprawdzeniu statusu wysyłki)</label>
-                        <input id="upload-invoice-num" type="text" class="form-control">
-                    </div>
-                    <div class="col">
-                        <label for="upload-invoice-date" class="form-label">Data faktury nadana przez KSeF (po sprawdzeniu statusu wysyłki)</label>
-                        <input id="upload-invoice-date" type="text" class="form-control">
-                    </div>
-                </div>
+        // seller NIP and name (this data must match yours data at KSeF portal)
+        $this->sellerNip = "enter your company's NIP here";
+        $this->sellerName = "enter your company's name here";
 
-                <div class="row mb-3">
-                    <div class="col">
-                        <h3>Black Box - Wysłanie paczki faktur</h3>
-                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col">
-                        <label for="upload-batch-id" class="form-label">ID wysyłki (unikalne ID nadane przez użytkownika)</label>
-                        <input id="upload-batch-id" type="text" class="form-control">
-                    </div>
-                    <div class="col">
-                        <label for="upload-batch-offline" class="form-label">Tryb przesyłania</label>
-                        <select id="upload-batch-offline" class="form-select">
-                            <option value="false" selected>Online</option>
-                            <option value="true">Offline</option>
-                        </select>
-                    </div>
-                    <div class="col">
-                        <label for="upload-batch-ver" class="form-label">Wersja schematu XML faktur w paczce</label>
-                        <select id="upload-batch-ver" class="form-select">
-                            <option value="v3" selected>FA (3)</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col">
-                        <button id="upload-batch-id-new" type="button" class="btn btn-sm btn-primary">Nowe ID</button>
-                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col">
-                        <label for="upload-batch-file" class="form-label">Paczka faktur (plik ZIP)</label>
-                        <input id="upload-batch-file" type="file" accept=".zip" class="form-control"/>
-                        <div id="upload-batch-res" class="text-success"></div>
-                        <div id="upload-batch-err" class="text-danger"></div>
-                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col">
-                        <button id="upload-batch" type="button" class="btn btn-sm btn-primary">Wyślij paczkę faktur</button>
-                        <button id="upload-batch-status" type="button" class="btn btn-sm btn-primary">Sprawdź status wysyłki</button>
-                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col">
-                        <label for="upload-batch-info" class="form-label">Status faktur z paczki (po sprawdzeniu statusu wysyłki)</label>
-                        <textarea id="upload-batch-info" class="form-control"></textarea>
-                    </div>
-                </div>
+        // increment on each run to avoid duplicates
+        $this->invoiceNumber = 1;
 
-                <div class="row mb-3">
-                    <div class="col">
-                        <h3>Black Box - Pobieranie faktur</h3>
-                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col">
-                        <label for="download-invoices-id" class="form-label">ID zlecenia (unikalne ID nadane przez użytkownika)</label>
-                        <input id="download-invoices-id" type="text" class="form-control">
-                    </div>
-                    <div class="col">
-                        <label for="download-invoices-subject" class="form-label">Typ podmiotu</label>
-                        <select id="download-invoices-subject" class="form-select">
-                            <option value="Subject1">Subject1 (Podmiot 1 - sprzedawca)</option>
-                            <option value="Subject2">Subject2 (Podmiot 2 - nabywca)</option>
-                            <option value="Subject3">Subject3 (Podmiot 3)</option>
-                            <option value="SubjectAuthorized">SubjectAuthorized (Podmiot upoważniony)</option>
-                        </select>
-                    </div>
-                    <div class="col">
-                        <label for="download-invoices-from" class="form-label">Data od (yyyy-mm-dd)</label>
-                        <input id="download-invoices-from" type="text" class="form-control" value="<?= date('Y-m-d') ?>">
-                    </div>
-                    <div class="col">
-                        <label for="download-invoices-to" class="form-label">Data do (yyyy-mm-dd)</label>
-                        <input id="download-invoices-to" type="text" class="form-control" value="<?= date('Y-m-d') ?>">
-                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col">
-                        <div id="download-invoices-res" class="text-danger"></div>
-                        <div id="download-invoices-err" class="text-danger"></div>
-                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col">
-                        <button id="download-invoices-id-new" type="button" class="btn btn-sm btn-primary">Nowe ID</button>
-                        <button id="download-invoices" type="button" class="btn btn-sm btn-primary">Wyślij zlecenie pobrania</button>
-                        <button id="download-invoices-status" type="button" class="btn btn-sm btn-primary">Sprawdź status</button>
-                    </div>
-                </div>
-            </form>
-        </div>
-    </body>
+        // KSEF API client object
+        $this->ksefApi = new KsefApiClient(KsefApiClient::TEST_URL, 'enter valid API id here', 'enter valid API key here');
 
-    <script>
-        const sampleInvoice = 'PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPEZha3R1cmEgeG1sbnM6ZXRkPSJodHRwOi8vY3JkLmdvdi5wbC94bWwvc2NoZW1hdHkvZHppZWR6aW5vd2UvbWYvMjAyMi8wMS8wNS9lRC9EZWZpbmljamVUeXB5LyIgeG1sbnM6eHNpPSJodHRwOi8vd3d3LnczLm9yZy8yMDAxL1hNTFNjaGVtYS1pbnN0YW5jZSIKeG1sbnM9Imh0dHA6Ly9jcmQuZ292LnBsL3d6b3IvMjAyNS8wNi8yNS8xMzc3NS8iPgoJPE5hZ2xvd2VrPgoJCTxLb2RGb3JtdWxhcnphIGtvZFN5c3RlbW93eT0iRkEgKDMpIiB3ZXJzamFTY2hlbXk9IjEtMEUiPkZBPC9Lb2RGb3JtdWxhcnphPgoJCTxXYXJpYW50Rm9ybXVsYXJ6YT4zPC9XYXJpYW50Rm9ybXVsYXJ6YT4KCQk8RGF0YVd5dHdvcnplbmlhRmE+MjAyNi0wMi0wMVQwMDowMDowMFo8L0RhdGFXeXR3b3J6ZW5pYUZhPgoJCTxTeXN0ZW1JbmZvPlNhbXBsb0Zha3R1cjwvU3lzdGVtSW5mbz4KCTwvTmFnbG93ZWs+Cgk8UG9kbWlvdDE+CgkJPERhbmVJZGVudHlmaWthY3lqbmU+CgkJCTxOSVA+OTk5OTk5OTk5OTwvTklQPgoJCQk8TmF6d2E+QUJDIEFHRCBzcC4geiBvLiBvLjwvTmF6d2E+CgkJPC9EYW5lSWRlbnR5ZmlrYWN5am5lPgoJCTxBZHJlcz4KCQkJPEtvZEtyYWp1PlBMPC9Lb2RLcmFqdT4KCQkJPEFkcmVzTDE+dWwuIEt3aWF0b3dhIDEgbS4gMjwvQWRyZXNMMT4KCQkJPEFkcmVzTDI+MDAtMDAxIFdhcnN6YXdhPC9BZHJlc0wyPgoJCTwvQWRyZXM+CgkJPERhbmVLb250YWt0b3dlPgoJCQk8RW1haWw+YWJjQGFiYy5wbDwvRW1haWw+CgkJCTxUZWxlZm9uPjY2NzQ0NDU1NTwvVGVsZWZvbj4KCQk8L0RhbmVLb250YWt0b3dlPgoJPC9Qb2RtaW90MT4KCTxQb2RtaW90Mj4KCQk8RGFuZUlkZW50eWZpa2FjeWpuZT4KCQkJPE5JUD4xMTExMTExMTExPC9OSVA+CgkJCTxOYXp3YT5GLkguVS4gSmFuIEtvd2Fsc2tpPC9OYXp3YT4KCQk8L0RhbmVJZGVudHlmaWthY3lqbmU+CgkJPEFkcmVzPgoJCQk8S29kS3JhanU+UEw8L0tvZEtyYWp1PgoJCQk8QWRyZXNMMT51bC4gUG9sbmEgMTwvQWRyZXNMMT4KCQkJPEFkcmVzTDI+MDAtMDAxIFdhcnN6YXdhPC9BZHJlc0wyPgoJCTwvQWRyZXM+CgkJPERhbmVLb250YWt0b3dlPgoJCQk8RW1haWw+amFuQGtvd2Fsc2tpLnBsPC9FbWFpbD4KCQkJPFRlbGVmb24+NTU1Nzc3OTk5PC9UZWxlZm9uPgoJCTwvRGFuZUtvbnRha3Rvd2U+CgkJPE5yS2xpZW50YT5mZGZkNzc4MzQzPC9OcktsaWVudGE+CgkJPEpTVD4yPC9KU1Q+CgkJPEdWPjI8L0dWPgoJPC9Qb2RtaW90Mj4KCTxGYT4KCQk8S29kV2FsdXR5PlBMTjwvS29kV2FsdXR5PgoJCTxQXzE+MjAyNi0wMi0xNTwvUF8xPgoJCTxQXzFNPldhcnN6YXdhPC9QXzFNPgoJCTxQXzI+RlYyMDI2LzAyLzE1MDwvUF8yPgoJCTxQXzY+MjAyNi0wMS0yNzwvUF82PgoJCTxQXzEzXzE+MTY2Ni42NjwvUF8xM18xPgoJCTxQXzE0XzE+MzgzLjMzPC9QXzE0XzE+CgkJPFBfMTNfMz4wLjk1PC9QXzEzXzM+CgkJPFBfMTRfMz4wLjA1PC9QXzE0XzM+CgkJPFBfMTU+MjA1MTwvUF8xNT4KCQk8QWRub3RhY2plPgoJCQk8UF8xNj4yPC9QXzE2PgoJCQk8UF8xNz4yPC9QXzE3PgoJCQk8UF8xOD4yPC9QXzE4PgoJCQk8UF8xOEE+MjwvUF8xOEE+CgkJCTxad29sbmllbmllPgoJCQkJPFBfMTlOPjE8L1BfMTlOPgoJCQk8L1p3b2xuaWVuaWU+CgkJCTxOb3dlU3JvZGtpVHJhbnNwb3J0dT4KCQkJCTxQXzIyTj4xPC9QXzIyTj4KCQkJPC9Ob3dlU3JvZGtpVHJhbnNwb3J0dT4KCQkJPFBfMjM+MjwvUF8yMz4KCQkJPFBNYXJ6eT4KCQkJCTxQX1BNYXJ6eU4+MTwvUF9QTWFyenlOPgoJCQk8L1BNYXJ6eT4KCQk8L0Fkbm90YWNqZT4KCQk8Um9kemFqRmFrdHVyeT5WQVQ8L1JvZHphakZha3R1cnk+CgkJPEZQPjE8L0ZQPgoJCTxEb2RhdGtvd3lPcGlzPgoJCQk8S2x1Y3o+cHJlZmVyb3dhbmUgZ29kemlueSBkb3dvenU8L0tsdWN6PgoJCQk8V2FydG9zYz5kbmkgcm9ib2N6ZSAxNzowMCAtIDIwOjAwPC9XYXJ0b3NjPgoJCTwvRG9kYXRrb3d5T3Bpcz4KCQk8RmFXaWVyc3o+CgkJCTxOcldpZXJzemFGYT4xPC9OcldpZXJzemFGYT4KCQkJPFVVX0lEPmFhYWExMTExMzMzMzk5OTA8L1VVX0lEPgoJCQk8UF83PmxvZMOzd2thIFppbW5vdGVjaCBtazE8L1BfNz4KCQkJPFBfOEE+c3p0LjwvUF84QT4KCQkJPFBfOEI+MTwvUF84Qj4KCQkJPFBfOUE+MTYyNi4wMTwvUF85QT4KCQkJPFBfMTE+MTYyNi4wMTwvUF8xMT4KCQkJPFBfMTI+MjM8L1BfMTI+CgkJPC9GYVdpZXJzej4KCQk8RmFXaWVyc3o+CgkJCTxOcldpZXJzemFGYT4yPC9OcldpZXJzemFGYT4KCQkJPFVVX0lEPmFhYWExMTExMzMzMzk5OTE8L1VVX0lEPgoJCQk8UF83PnduaWVzaWVuaWUgc3ByesSZdHU8L1BfNz4KCQkJPFBfOEE+c3p0LjwvUF84QT4KCQkJPFBfOEI+MTwvUF84Qj4KCQkJPFBfOUE+NDAuNjU8L1BfOUE+CgkJCTxQXzExPjQwLjY1PC9QXzExPgoJCQk8UF8xMj4yMzwvUF8xMj4KCQk8L0ZhV2llcnN6PgoJCTxGYVdpZXJzej4KCQkJPE5yV2llcnN6YUZhPjM8L05yV2llcnN6YUZhPgoJCQk8VVVfSUQ+YWFhYTExMTEzMzMzOTk5MjwvVVVfSUQ+CgkJCTxQXzc+cHJvbW9jamEgbG9kw7N3a2EgcGXFgm5hIG1sZWthPC9QXzc+CgkJCTxQXzhBPnN6dC48L1BfOEE+CgkJCTxQXzhCPjE8L1BfOEI+CgkJCTxQXzlBPjAuOTU8L1BfOUE+CgkJCTxQXzExPjAuOTU8L1BfMTE+CgkJCTxQXzEyPjU8L1BfMTI+CgkJPC9GYVdpZXJzej4KCQk8UGxhdG5vc2M+CgkJCTxaYXBsYWNvbm8+MTwvWmFwbGFjb25vPgoJCQk8RGF0YVphcGxhdHk+MjAyNi0wMS0yNzwvRGF0YVphcGxhdHk+CgkJCTxGb3JtYVBsYXRub3NjaT42PC9Gb3JtYVBsYXRub3NjaT4KCQk8L1BsYXRub3NjPgoJCTxXYXJ1bmtpVHJhbnNha2NqaT4KCQkJPFphbW93aWVuaWE+CgkJCQk8RGF0YVphbW93aWVuaWE+MjAyNi0wMS0yNjwvRGF0YVphbW93aWVuaWE+CgkJCQk8TnJaYW1vd2llbmlhPjQzNTQzNDM8L05yWmFtb3dpZW5pYT4KCQkJPC9aYW1vd2llbmlhPgoJCTwvV2FydW5raVRyYW5zYWtjamk+Cgk8L0ZhPgoJPFN0b3BrYT4KCQk8SW5mb3JtYWNqZT4KCQkJPFN0b3BrYUZha3R1cnk+S2FwaWHFgiB6YWvFgmFkb3d5IDUgMDAwIDAwMDwvU3RvcGthRmFrdHVyeT4KCQk8L0luZm9ybWFjamU+CgkJPFJlamVzdHJ5PgoJCQk8S1JTPjAwMDAwOTk5OTk8L0tSUz4KCQkJPFJFR09OPjk5OTk5OTk5OTwvUkVHT04+CgkJCTxCRE8+MDAwMDk5OTk5PC9CRE8+CgkJPC9SZWplc3RyeT4KCTwvU3RvcGthPgo8L0Zha3R1cmE+Cg==';
+        $this->generate_encryption_data();
+        $this->ksefNumber = null;
+    }
 
-        function send(req, ok, id) {
-            $.post('index.php', req
-            ).done((data) => {
-                $('#' + id).text('');
-                ok(data);
-            }).fail((xhr, status, error) => {
-                const data = xhr.responseJSON;
-                $('#' + id).text('Error: ' + data.description + ' (code: ' + data.code + ')');
-            });
+    /**
+     * Throw a runtime exception based on the client's last error
+     */
+    private function fail(string $context): void
+    {
+        $error = $this->ksefApi->getLastError();
+        $suffix = $error ? (string)$error : 'unknown error';
+        throw new RuntimeException($context . ': ' . $suffix);
+    }
+
+    /**
+     * Create a random temp file path
+     */
+    private function temp_file(string $prefix, string $extension): string
+    {
+        return rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR
+            . $prefix . bin2hex(random_bytes(16)) . $extension;
+    }
+
+    /**
+     * Format date as YYYY-MM-DD
+     */
+    private function to_date(): string
+    {
+        return $this->now->format('Y-m-d');
+    }
+
+    /**
+     * Format date as UTC ISO-8601 with milliseconds
+     */
+    private function to_iso(): string
+    {
+        return $this->now->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s.v\Z');
+    }
+
+    /**
+     * Get next invoice number for tests
+     */
+    private function gen_next_invoice_number(): string
+    {
+        return sprintf('KSEFAPI/%05d/%02d/%02d/%04d', $this->invoiceNumber++, (int)$this->now->format('d'),
+            (int)$this->now->format('m'), (int)$this->now->format('Y'));
+    }
+
+    /**
+     * Create an invoice object
+     */
+    private function create_invoice(): Faktura
+    {
+        // create new invoice object (adapt the data to your needs)
+        $kf = new TKodFormularza();
+        $kf->setKodFormularza(TKodFormularza::KOD_FORMULARZA_FA);
+        $kf->setKodSystemowy(TKodFormularza::KOD_SYSTEMOWY_FA_V3);
+        $kf->setWersjaSchemy(TKodFormularza::WERSJA_SCHEMY__1_0_E);
+
+        $n = new TNaglowek();
+        $n->setKodFormularza($kf);
+        $n->setWariantFormularza(WariantFormularza::NUMBER_3);
+        $n->setDataWytworzeniaFa(DateTime::createFromInterface($this->now));
+        $n->setSystemInfo('KSEF API');
+
+        // seller data
+        $p1 = new TPodmiot1();
+        $p1->setNip($this->sellerNip);
+        $p1->setNazwa($this->sellerName);
+
+        $p1a = new TAdres();
+        $p1a->setKodKraju(TKodKraju::PL);
+        $p1a->setAdresL1('ul. Kwiatowa 1 m. 2');
+        $p1a->setAdresL2('00-001 Warszawa');
+
+        $podmiot1 = new Podmiot1();
+        $podmiot1->setDaneIdentyfikacyjne($p1);
+        $podmiot1->setAdres($p1a);
+
+        // buyer data
+        $p2 = new TPodmiot2();
+        $p2->setNazwa('F.H.U. Jan Kowalski');
+        $p2->setNip('1111111111');
+
+        $p2a = new TAdres();
+        $p2a->setKodKraju(TKodKraju::PL);
+        $p2a->setAdresL1('ul. Polna 1');
+        $p2a->setAdresL2('00-001 Warszawa');
+
+        $podmiot2 = new Podmiot2();
+        $podmiot2->setDaneIdentyfikacyjne($p2);
+        $podmiot2->setAdres($p2a);
+        $podmiot2->setJst(2);
+        $podmiot2->setGv(2);
+
+        $z = new Zwolnienie();
+        $z->setP19N(1);
+
+        $nst = new NoweSrodkiTransportu();
+        $nst->setP22N(1);
+
+        $m = new PMarzy();
+        $m->setPPMarzyN(1);
+
+        $ad = new Adnotacje();
+        $ad->setP16(2);
+        $ad->setP17(2);
+        $ad->setP18(2);
+        $ad->setP18A(2);
+        $ad->setZwolnienie($z);
+        $ad->setNoweSrodkiTransportu($nst);
+        $ad->setP23(2);
+        $ad->setPMarzy($m);
+
+        $pl = new Platnosc();
+        $pl->setZaplacono(1);
+        $pl->setDataZaplaty(DateTime::createFromInterface($this->now));
+        $pl->setFormaPlatnosci(TFormaPlatnosci::NUMBER_6);
+
+        $w1 = new FaWiersz();
+        $w1->setNrWierszaFa(1);
+        $w1->setUuId('aaaa111133339990');
+        $w1->setP7('lodówka Zimnotech mk1');
+        $w1->setP8A('szt.');
+        $w1->setP8B(1);
+        $w1->setP9A(1626.01);
+        $w1->setP11(1626.01);
+        $w1->setP12(TStawkaPodatku::_23);
+
+        $w2 = new FaWiersz();
+        $w2->setNrWierszaFa(2);
+        $w2->setUuId('aaaa111133339991');
+        $w2->setP7('wniesienie sprzętu');
+        $w2->setP8A('szt.');
+        $w2->setP8B(1);
+        $w2->setP9A(40.65);
+        $w2->setP11(40.65);
+        $w2->setP12(TStawkaPodatku::_23);
+
+        $w3 = new FaWiersz();
+        $w3->setNrWierszaFa(3);
+        $w3->setUuId('aaaa111133339992');
+        $w3->setP7('promocja lodówka pełna mleka');
+        $w3->setP8A('szt.');
+        $w3->setP8B(1);
+        $w3->setP9A(0.95);
+        $w3->setP11(0.95);
+        $w3->setP12(TStawkaPodatku::_5);
+
+        $fa = new Fa();
+        $fa->setKodWaluty(TKodWaluty::PLN);
+        $fa->setP1(DateTime::createFromInterface($this->now)); // date of issue
+        $fa->setP1M('Warszawa');
+        $fa->setP2($this->gen_next_invoice_number()); // invoice number
+        $fa->setP6(DateTime::createFromInterface($this->now)); // date of sale
+        $fa->setP131(1666.66); // total net amount
+        $fa->setP141(383.33); // total VAT amount
+        $fa->setP133(0.95);
+        $fa->setP143(0.05);
+        $fa->setP15(2051.00); // total gross amount
+        $fa->setAdnotacje($ad);
+        $fa->setRodzajFaktury(TRodzajFaktury::VAT);
+        $fa->setFp(1);
+        $fa->setPlatnosc($pl);
+        $fa->setFaWiersz([$w1, $w2, $w3]);
+
+        $invoice = new Faktura();
+        $invoice->setNaglowek($n);
+        $invoice->setPodmiot1($podmiot1);
+        $invoice->setPodmiot2($podmiot2);
+        $invoice->setFa($fa);
+
+        return $invoice;
+    }
+
+    /**
+     * Get sample invoice XML
+     */
+    private function get_invoice_xml(): string
+    {
+        return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+            . "<Faktura xmlns:etd=\"http://crd.gov.pl/xml/schematy/dziedzinowe/mf/2022/01/05/eD/DefinicjeTypy/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n"
+            . "xmlns=\"http://crd.gov.pl/wzor/2025/06/25/13775/\">\n"
+            . "\t<Naglowek>\n"
+            . "\t\t<KodFormularza kodSystemowy=\"FA (3)\" wersjaSchemy=\"1-0E\">FA</KodFormularza>\n"
+            . "\t\t<WariantFormularza>3</WariantFormularza>\n"
+            . "\t\t<DataWytworzeniaFa>" . $this->to_iso() . "</DataWytworzeniaFa>\n"
+            . "\t\t<SystemInfo>KSEF API</SystemInfo>\n"
+            . "\t</Naglowek>\n"
+            . "\t<Podmiot1>\n"
+            . "\t\t<DaneIdentyfikacyjne>\n"
+            . "\t\t\t<NIP>" . htmlspecialchars($this->sellerNip, ENT_XML1) . "</NIP>\n"
+            . "\t\t\t<Nazwa>" . htmlspecialchars($this->sellerName, ENT_XML1) . "</Nazwa>\n"
+            . "\t\t</DaneIdentyfikacyjne>\n"
+            . "\t\t<Adres>\n"
+            . "\t\t\t<KodKraju>PL</KodKraju>\n"
+            . "\t\t\t<AdresL1>ul. Kwiatowa 1 m. 2</AdresL1>\n"
+            . "\t\t\t<AdresL2>00-001 Warszawa</AdresL2>\n"
+            . "\t\t</Adres>\n"
+            . "\t\t<DaneKontaktowe>\n"
+            . "\t\t\t<Email>abc@abc.pl</Email>\n"
+            . "\t\t\t<Telefon>667444555</Telefon>\n"
+            . "\t\t</DaneKontaktowe>\n"
+            . "\t</Podmiot1>\n"
+            . "\t<Podmiot2>\n"
+            . "\t\t<DaneIdentyfikacyjne>\n"
+            . "\t\t\t<NIP>1111111111</NIP>\n"
+            . "\t\t\t<Nazwa>F.H.U. Jan Kowalski</Nazwa>\n"
+            . "\t\t</DaneIdentyfikacyjne>\n"
+            . "\t\t<Adres>\n"
+            . "\t\t\t<KodKraju>PL</KodKraju>\n"
+            . "\t\t\t<AdresL1>ul. Polna 1</AdresL1>\n"
+            . "\t\t\t<AdresL2>00-001 Warszawa</AdresL2>\n"
+            . "\t\t</Adres>\n"
+            . "\t\t<DaneKontaktowe>\n"
+            . "\t\t\t<Email>jan@kowalski.pl</Email>\n"
+            . "\t\t\t<Telefon>555777999</Telefon>\n"
+            . "\t\t</DaneKontaktowe>\n"
+            . "\t\t<NrKlienta>fdfd778343</NrKlienta>\n"
+            . "\t\t<JST>2</JST>\n"
+            . "\t\t<GV>2</GV>\n"
+            . "\t</Podmiot2>\n"
+            . "\t<Fa>\n"
+            . "\t\t<KodWaluty>PLN</KodWaluty>\n"
+            . "\t\t<P_1>" . $this->to_date() . "</P_1>\n"
+            . "\t\t<P_1M>Warszawa</P_1M>\n"
+            . "\t\t<P_2>" . $this->gen_next_invoice_number() . "</P_2>\n"
+            . "\t\t<P_6>" . $this->to_date() . "</P_6>\n"
+            . "\t\t<P_13_1>1666.66</P_13_1>\n"
+            . "\t\t<P_14_1>383.33</P_14_1>\n"
+            . "\t\t<P_13_3>0.95</P_13_3>\n"
+            . "\t\t<P_14_3>0.05</P_14_3>\n"
+            . "\t\t<P_15>2051</P_15>\n"
+            . "\t\t<Adnotacje>\n"
+            . "\t\t\t<P_16>2</P_16>\n"
+            . "\t\t\t<P_17>2</P_17>\n"
+            . "\t\t\t<P_18>2</P_18>\n"
+            . "\t\t\t<P_18A>2</P_18A>\n"
+            . "\t\t\t<Zwolnienie>\n"
+            . "\t\t\t\t<P_19N>1</P_19N>\n"
+            . "\t\t\t</Zwolnienie>\n"
+            . "\t\t\t<NoweSrodkiTransportu>\n"
+            . "\t\t\t\t<P_22N>1</P_22N>\n"
+            . "\t\t\t</NoweSrodkiTransportu>\n"
+            . "\t\t\t<P_23>2</P_23>\n"
+            . "\t\t\t<PMarzy>\n"
+            . "\t\t\t\t<P_PMarzyN>1</P_PMarzyN>\n"
+            . "\t\t\t</PMarzy>\n"
+            . "\t\t</Adnotacje>\n"
+            . "\t\t<RodzajFaktury>VAT</RodzajFaktury>\n"
+            . "\t\t<FP>1</FP>\n"
+            . "\t\t<DodatkowyOpis>\n"
+            . "\t\t\t<Klucz>preferowane godziny dowozu</Klucz>\n"
+            . "\t\t\t<Wartosc>dni robocze 17:00 - 20:00</Wartosc>\n"
+            . "\t\t</DodatkowyOpis>\n"
+            . "\t\t<FaWiersz>\n"
+            . "\t\t\t<NrWierszaFa>1</NrWierszaFa>\n"
+            . "\t\t\t<UU_ID>aaaa111133339990</UU_ID>\n"
+            . "\t\t\t<P_7>lodówka Zimnotech mk1</P_7>\n"
+            . "\t\t\t<P_8A>szt.</P_8A>\n"
+            . "\t\t\t<P_8B>1</P_8B>\n"
+            . "\t\t\t<P_9A>1626.01</P_9A>\n"
+            . "\t\t\t<P_11>1626.01</P_11>\n"
+            . "\t\t\t<P_12>23</P_12>\n"
+            . "\t\t</FaWiersz>\n"
+            . "\t\t<FaWiersz>\n"
+            . "\t\t\t<NrWierszaFa>2</NrWierszaFa>\n"
+            . "\t\t\t<UU_ID>aaaa111133339991</UU_ID>\n"
+            . "\t\t\t<P_7>wniesienie sprzętu</P_7>\n"
+            . "\t\t\t<P_8A>szt.</P_8A>\n"
+            . "\t\t\t<P_8B>1</P_8B>\n"
+            . "\t\t\t<P_9A>40.65</P_9A>\n"
+            . "\t\t\t<P_11>40.65</P_11>\n"
+            . "\t\t\t<P_12>23</P_12>\n"
+            . "\t\t</FaWiersz>\n"
+            . "\t\t<FaWiersz>\n"
+            . "\t\t\t<NrWierszaFa>3</NrWierszaFa>\n"
+            . "\t\t\t<UU_ID>aaaa111133339992</UU_ID>\n"
+            . "\t\t\t<P_7>promocja lodówka pełna mleka</P_7>\n"
+            . "\t\t\t<P_8A>szt.</P_8A>\n"
+            . "\t\t\t<P_8B>1</P_8B>\n"
+            . "\t\t\t<P_9A>0.95</P_9A>\n"
+            . "\t\t\t<P_11>0.95</P_11>\n"
+            . "\t\t\t<P_12>5</P_12>\n"
+            . "\t\t</FaWiersz>\n"
+            . "\t\t<Platnosc>\n"
+            . "\t\t\t<Zaplacono>1</Zaplacono>\n"
+            . "\t\t\t<DataZaplaty>" . $this->to_date() . "</DataZaplaty>\n"
+            . "\t\t\t<FormaPlatnosci>6</FormaPlatnosci>\n"
+            . "\t\t</Platnosc>\n"
+            . "\t\t<WarunkiTransakcji>\n"
+            . "\t\t\t<Zamowienia>\n"
+            . "\t\t\t\t<DataZamowienia>" . $this->to_date() . "</DataZamowienia>\n"
+            . "\t\t\t\t<NrZamowienia>4354343</NrZamowienia>\n"
+            . "\t\t\t</Zamowienia>\n"
+            . "\t\t</WarunkiTransakcji>\n"
+            . "\t</Fa>\n"
+            . "\t<Stopka>\n"
+            . "\t\t<Informacje>\n"
+            . "\t\t\t<StopkaFaktury>Kapitał zakładowy 5 000 000</StopkaFaktury>\n"
+            . "\t\t</Informacje>\n"
+            . "\t\t<Rejestry>\n"
+            . "\t\t\t<KRS>0000099999</KRS>\n"
+            . "\t\t\t<REGON>999999999</REGON>\n"
+            . "\t\t\t<BDO>000099999</BDO>\n"
+            . "\t\t</Rejestry>\n"
+            . "\t</Stopka>\n"
+            . "</Faktura>\n";
+    }
+
+    /**
+     * Create new batch file
+     */
+    private function create_batch(): string
+    {
+        if (!class_exists('ZipArchive')) {
+            throw new RuntimeException('ZipArchive extension is required to create batch examples');
         }
 
-        function download(req, id) {
-            $.ajaxSetup({
-                beforeSend: (xhr, settings) => {
-                    if (settings.dataType === 'binary') {
-                        settings.xhr = () => $.extend(new window.XMLHttpRequest(), {responseType:'arraybuffer'});
-                        settings.processData = false;
-                    }
-                }
-            });
+        $path = $this->temp_file('batch-', '.zip');
+        $zip = new ZipArchive();
 
-            $.ajax({
-                type: 'POST',
-                url: 'index.php',
-                data: req,
-                dataType: 'binary',
-                success: (data, status, xhr) => {
-                    $('#' + id).text('');
-                    const disposition = xhr.getResponseHeader('Content-Disposition');
-                    let filename = '';
-                    if (disposition && disposition.indexOf('attachment') !== -1) {
-                        const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
-                        const matches = filenameRegex.exec(disposition);
-                        if (matches != null && matches[1]) {
-                            filename = matches[1].replace(/['"]/g, '');
-                        }
-                    }
-
-                    const type = xhr.getResponseHeader('Content-Type');
-                    const blob = new Blob([data], {type: type});
-
-                    const URL = window.URL || window.webkitURL;
-                    const downloadUrl = URL.createObjectURL(blob);
-
-                    if (filename) {
-                        const a = document.createElement("a");
-                        if (typeof a.download === 'undefined') {
-                            window.location = downloadUrl;
-                        } else {
-                            a.href = downloadUrl;
-                            a.download = filename;
-                            document.body.appendChild(a);
-                            a.click();
-                        }
-                    } else {
-                        window.location = downloadUrl;
-                    }
-
-                    setTimeout(() => {
-                        URL.revokeObjectURL(downloadUrl);
-                    }, 100);
-                },
-                error: (xhr, status, err) => {
-                    $('#' + id).text('Error: ' + xhr.statusText + ' (code: ' + xhr.status + ')');
-                }
-            });
+        if ($zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            throw new RuntimeException('Unable to create batch archive: ' . $path);
         }
 
-        function b64EncodeUnicode(str) {
-            return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g,
-                function toSolidBytes(match, p1) {
-                    return String.fromCharCode('0x' + p1);
-                }));
+        for ($i = 1; $i <= 100; $i++) {
+            $zip->addFromString(sprintf('invoice-%03d.xml', $i), $this->get_invoice_xml());
         }
 
-        function b64DecodeUnicode(str) {
-            return decodeURIComponent(atob(str).split('').map(function(c) {
-                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-            }).join(''));
+        $zip->close();
+
+        return $path;
+    }
+
+    /**
+     * Print out invoice info
+     */
+    private function print_invoice_info(InvoiceInfo $info): void
+    {
+        $status = $info->getStatus();
+
+        out('Invoice status code: ' . $status->getCode());
+        out('Invoice status description: ' . $status->getDescription());
+        out('Invoice status details: ' . $status->getDetails());
+
+        if ($status->getCode() === 200) {
+            out('Invoice number: ' . $info->getInvoiceNumber());
+            out('Invoice KSeF number: ' . $info->getKsefNumber());
+            out('Invoice acquisition date: ' . $info->getAcquisitionDate()?->format(DateTimeInterface::ATOM));
+        }
+    }
+
+    /**
+     * Upload a single batch part to the storage endpoint returned by the API
+     * @param string[] $headers
+     */
+    private function upload_part(string $method, string $url, array $headers, string $body): void
+    {
+        $curl = curl_init($url);
+        if ($curl === false) {
+            throw new RuntimeException('Unable to initialize cURL for part upload');
         }
 
-        function makeid(length) {
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-            const len = chars.length;
-            let id = '';
-            for (let i = 0; i < length; i++ ) {
-                id += chars.charAt(Math.floor(Math.random() * len));
+        curl_setopt($curl, CURLOPT_CUSTOMREQUEST, $method);
+        curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt($curl, CURLOPT_POSTFIELDS, $body);
+        curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($curl, CURLOPT_HEADER, true);
+
+        $response = curl_exec($curl);
+        $status = curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
+        $error = curl_error($curl);
+        curl_close($curl);
+
+        if ($response === false || $status !== 201) {
+            throw new RuntimeException('Part upload failed: HTTP ' . $status . ($error ? ' (' . $error . ')' : ''));
+        }
+    }
+
+    /**
+     * Generate init vector and key for symmetric encryption
+     */
+    private function generate_encryption_data(): void
+    {
+        out('generate_encryption_data');
+
+        // get new init vector for symmetric encryption
+        $this->iv = $this->ksefApi->generateInitVector();
+        if ($this->iv === false) {
+            $this->fail('generateInitVector failed');
+        }
+        out('Init vector: ' . base64_encode($this->iv));
+
+        // gen new symmetric key for encryption
+        $this->sKey = $this->ksefApi->generateKey();
+        if ($this->sKey === false) {
+            $this->fail('generateKey failed');
+        }
+        out('Symmetric key: ' . base64_encode($this->sKey));
+
+        // encrypt symmetric key with KSeF public key
+        $publicKey = $this->ksefApi->ksefPublicKey();
+        if ($publicKey === false) {
+            $this->fail('ksefPublicKey failed');
+        }
+        out('KSeF public key: ' . printObject($publicKey));
+
+        $this->encKey = $this->ksefApi->encryptKey($publicKey, $this->sKey);
+        if ($this->encKey === false) {
+            $this->fail('encryptKey failed');
+        }
+        out('Encrypted symmetric key: ' . base64_encode($this->encKey));
+    }
+
+    /**
+     * Create invoice XML
+     */
+    public function create_invoice_xml(): void
+    {
+        out('create_invoice_xml');
+
+        // create new invoice object
+        $invoice = $this->create_invoice();
+
+        // get invoice as xml
+        $xml = $this->ksefApi->ksefInvoiceGenerate($invoice);
+
+        if ($xml === false) {
+            $this->fail('ksefInvoiceGenerate failed');
+        }
+
+        out('Invoice XML: ' . htmlspecialchars($xml));
+    }
+
+    /**
+     * Validate invoice XML
+     */
+    public function validate_invoice_xml(): void
+    {
+        out('validate_invoice_xml');
+
+        // validate xml
+        $xml = $this->get_invoice_xml();
+        $result = $this->ksefApi->ksefInvoiceValidate($xml);
+
+        if ($result === false) {
+            $this->fail('ksefInvoiceValidate failed');
+        }
+
+        out('Validation result: ' . printObject($result));
+    }
+
+    /**
+     * Get sample invoice, encrypt it and send
+     */
+    public function create_and_send_invoice(): void
+    {
+        out('create_and_send_invoice');
+
+        // create new invoice object
+        $invoice = $this->create_invoice();
+
+        // get invoice as xml
+        $xml = $this->ksefApi->ksefInvoiceGenerate($invoice);
+        if ($xml === false) {
+            $this->fail('ksefInvoiceGenerate failed');
+        }
+        out('Invoice XML: ' . htmlspecialchars($xml));
+
+        // open new online session
+        $ei = new EncryptionInfo();
+        $ei->setInitVector(base64_encode($this->iv));
+        $ei->setEncryptedKey(base64_encode($this->encKey));
+
+        $soo = new KsefSessionOpenOnlineRequest();
+        $soo->setInvoiceVersion(KsefInvoiceVersion::V3);
+        $soo->setEncryptionInfo($ei);
+
+        out('KsefSessionOpenOnlineRequest: ' . printObject($soo));
+
+        $soor = $this->ksefApi->ksefSessionOpenOnline($soo);
+        if ($soor === false) {
+            $this->fail('ksefSessionOpenOnline failed');
+        }
+
+        out('KSeF session id: ' . $soor->getId());
+
+        // encrypt an invoice
+        $hash = $this->ksefApi->getHash($xml);
+        $encData = $this->ksefApi->encryptData($this->iv, $this->sKey, $xml);
+        if ($encData === false) {
+            $this->fail('encryptData failed');
+        }
+
+        // send an encrypted invoice
+        $ie = new KsefInvoiceEncrypted();
+        $ie->setInvoiceSize(strlen($xml));
+        $ie->setInvoiceHash(base64_encode($hash));
+        $ie->setEncryptedInvoice(base64_encode($encData));
+
+        $is = new KsefInvoiceSendRequest();
+        $is->setSessionId($soor->getId());
+        $is->setEncrypted($ie);
+
+        $isr = $this->ksefApi->ksefInvoiceSend($is);
+        if ($isr === false) {
+            $this->fail('ksefInvoiceSend failed');
+        }
+
+        out('KSeF invoice id: ' . $isr->getId());
+
+        // check an invoice status and fetch KSeF number and acquisition date (we’re using a simple loop here,
+        // but in real applications you should use a more sophisticated method)
+        $str = $this->ksefApi->waitForResult(fn() => $this->ksefApi->ksefInvoiceStatus($isr->getId()));
+        if ($str === false) {
+            $this->fail('ksefInvoiceStatus failed');
+        }
+
+        $this->print_invoice_info($str->getInvoiceInfo());
+
+        // save for other tests
+        $this->ksefNumber = $str->getInvoiceInfo()->getKsefNumber();
+
+        // close session
+        if (!$this->ksefApi->ksefSessionClose($soor->getId())) {
+            $this->fail('ksefSessionClose failed');
+        }
+
+        // wait for the UPO
+        $ssr = $this->ksefApi->waitForResult(fn() => $this->ksefApi->ksefSessionStatus($soor->getId()));
+        if ($ssr === false) {
+            $this->fail('ksefSessionStatus failed');
+        }
+
+        // get UPO
+        $upo = $this->ksefApi->ksefSessionUpo($soor->getId());
+        if ($upo === false) {
+            $this->fail('ksefSessionUpo failed');
+        }
+
+        $path = $this->temp_file('upo-', '.xml');
+        file_put_contents($path, $upo);
+
+        out('UPO: ' . htmlspecialchars($upo));
+        out('UPO saved to: ' . $path);
+    }
+
+    /**
+     * Generate sample batch, encrypt it and send
+     */
+    public function create_and_send_batch(): void
+    {
+        out('create_and_send_batch');
+
+        // create new batch
+        $batch = $this->create_batch();
+        out('Batch file: ' . $batch);
+
+        // encrypt batch (large batch files must be divided into 50 MB parts, with each part encrypted separately)
+        $data = file_get_contents($batch);
+        if ($data === false) {
+            throw new RuntimeException('Unable to read batch file: ' . $batch);
+        }
+
+        $dataHash = $this->ksefApi->getHash($data);
+        $encData = $this->ksefApi->encryptData($this->iv, $this->sKey, $data);
+        if ($encData === false) {
+            $this->fail('encryptData failed');
+        }
+
+        $encDataHash = $this->ksefApi->getHash($encData);
+
+        // open new batch session
+        $ei = new EncryptionInfo();
+        $ei->setInitVector(base64_encode($this->iv));
+        $ei->setEncryptedKey(base64_encode($this->encKey));
+
+        $bpi = new BatchPartInfo();
+        $bpi->setOrdinal(1);
+        $bpi->setPartSize(strlen($encData));
+        $bpi->setPartHash(base64_encode($encDataHash));
+
+        $bi = new BatchInfo();
+        $bi->setBatchSize(strlen($data));
+        $bi->setBatchHash(base64_encode($dataHash));
+        $bi->setBatchParts([$bpi]);
+
+        $sob = new KsefSessionOpenBatchRequest();
+        $sob->setInvoiceVersion(KsefInvoiceVersion::V3);
+        $sob->setEncryptionInfo($ei);
+        $sob->setOffline(true);
+        $sob->setBatchInfo($bi);
+
+        $sobr = $this->ksefApi->ksefSessionOpenBatch($sob);
+        if ($sobr === false) {
+            $this->fail('ksefSessionOpenBatch failed');
+        }
+
+        out('KSeF session id: ' . $sobr->getId());
+
+        // upload all batch parts (using received info)
+        foreach ($sobr->getPartUploads() as $pui) {
+            out('Uploading part: ' . $pui->getOrdinal());
+            out('Upload method: ' . $pui->getMethod());
+            out('Upload URL: ' . $pui->getUrl());
+
+            $headers = [];
+            foreach ($pui->getHeaders() as $header) {
+                $headers[] = $header->getName() . ': ' . $header->getValue();
             }
-            return id;
+            out('Upload headers: ' . implode(', ', $headers));
+
+            $this->upload_part($pui->getMethod(), $pui->getUrl(), $headers, $encData);
         }
 
-        $(document).ready(() => {
-            $('#invoice').val(b64DecodeUnicode(sampleInvoice));
+        out('Upload completed');
 
-            $('#pkey-get').on('click', () => {
-                send(
-                    {fun: 'ksefPublicKey'},
-                    (data) => {
-                        $('#pkey').val(data.publicKey);
-                    },
-                    'pkey-err'
-                );
-            });
+        // close session
+        if (!$this->ksefApi->ksefSessionClose($sobr->getId())) {
+            $this->fail('ksefSessionClose failed');
+        }
 
-            $('#session-new-ivkey').on('click', () => {
-                send(
-                    {fun: 'generateInitVector'},
-                    (data) => {
-                        $('#session-iv').val(data.iv);
-                    },
-                    'session-err'
-                );
-                send(
-                    {fun: 'generateKey'},
-                    (data) => {
-                        $('#session-key').val(data.key);
-                    },
-                    'session-err'
-                );
-            });
+        // wait for the batch to be processed (we're using a simple loop here, but in real applications
+        // you should use a more sophisticated method)
+        $ssr = $this->ksefApi->waitForResult(fn() => $this->ksefApi->ksefSessionStatus($sobr->getId()));
+        if ($ssr === false) {
+            $this->fail('ksefSessionStatus failed');
+        }
 
-            $('#session-new').on('click', () => {
-                send(
-                    {
-                        fun: 'encryptKey',
-                        public_key: $('#pkey').val(),
-                        key: $('#session-key').val()
-                    },
-                    (data) => {
-                        $('#session-enc-key').val(data.encryptedKey);
-                        send(
-                            {
-                                fun: 'ksefSessionOpen',
-                                iv: $('#session-iv').val(),
-                                enc_key: $('#session-enc-key').val()
-                            },
-                            (data) => {
-                                $('#session-id').val(data.id);
-                            },
-                            'session-err'
-                        );
-                    },
-                    'session-err'
-                );
-            });
+        out('Total invoices count: ' . $ssr->getSessionInfo()->getInvoiceCount());
+        out('Successful invoices count: ' . $ssr->getSessionInfo()->getSuccessfulInvoiceCount());
+        out('Failed invoices count: ' . $ssr->getSessionInfo()->getFailedInvoiceCount());
 
-            $('#session-check').on('click', () => {
-                send(
-                    {
-                        fun: 'ksefSessionStatus',
-                        session_id: $('#session-id').val()
-                    },
-                    (data) => {
-                        $('#session-status').text(data.sessionInfo.status.description);
-                    },
-                    'session-err'
-                );
-            });
+        // get batch invoices statuses (and fetch KSeF numbers and acquisition dates)
+        $sir = $this->ksefApi->ksefSessionInvoices($sobr->getId());
+        if ($sir === false) {
+            $this->fail('ksefSessionInvoices failed');
+        }
 
-            $('#session-close').on('click', () => {
-                send(
-                    {
-                        fun: 'ksefSessionClose',
-                        session_id: $('#session-id').val()
-                    },
-                    (data) => {
-                        $('#session-status').text('closed');
-                    },
-                    'session-err'
-                );
-            });
+        foreach ($sir->getInvoices() as $ii) {
+            $this->print_invoice_info($ii);
+        }
 
-            $('#session-upo').on('click', () => {
-                send(
-                    {
-                        fun: 'ksefSessionUpo',
-                        session_id: $('#session-id').val()
-                    },
-                    (data) => {
-                        $('#upo').text(b64DecodeUnicode(data.upo));
-                    },
-                    'session-err'
-                );
-            });
+        // get UPO
+        $upo = $this->ksefApi->ksefSessionUpo($sobr->getId());
+        if ($upo === false) {
+            $this->fail('ksefSessionUpo failed');
+        }
 
-            $('#invoice-validate').on('click', () => {
-                send(
-                    {
-                        fun: 'ksefInvoiceValidate',
-                        invoice: b64EncodeUnicode($('#invoice').val())
-                    },
-                    (data) => {
-                        $('#invoice-status').text('valid: ' + data.valid + ', version: ' + data.invoiceVersion);
-                    },
-                    'invoice-err'
-                );
-            });
+        $path = $this->temp_file('upo-', '.xml');
+        file_put_contents($path, $upo);
 
-            $('#invoice-send').on('click', () => {
-                const invoice = $('#invoice').val();
-                const size = new Blob([invoice]).size;
-                send(
-                    {
-                        fun: 'getHash',
-                        data: b64EncodeUnicode(invoice)
-                    },
-                    (data) => {
-                        const hash = data.hash;
-                        send(
-                            {
-                                fun: 'encryptData',
-                                iv: $('#session-iv').val(),
-                                key: $('#session-key').val(),
-                                data: b64EncodeUnicode(invoice)
-                            },
-                            (data) => {
-                                send(
-                                    {
-                                        fun: 'ksefInvoiceSend',
-                                        session_id: $('#session-id').val(),
-                                        size: size,
-                                        hash: hash,
-                                        data: data.encryptedData
-                                    },
-                                    (data) => {
-                                        $('#invoice-id').val(data.id);
-                                    },
-                                    'invoice-err'
-                                );
-                            },
-                            'invoice-err'
-                        );
-                    },
-                    'invoice-err'
-                );
-            });
+        out('UPO: ' . htmlspecialchars($upo));
+        out('UPO saved to: ' . $path);
+    }
 
-            $('#invoice-check').on('click', () => {
-                send(
-                    {
-                        fun: 'ksefInvoiceStatus',
-                        invoice_id: $('#invoice-id').val()
-                    },
-                    (data) => {
-                        $('#invoice-status').text(data.invoiceInfo.status.description + ' ' + (data.invoiceInfo.status.details ?? ''));
-                        $('#invoice-num').val(data.invoiceInfo.ksefNumber);
-                        $('#invoice-date').val(data.invoiceInfo.acquisitionDate);
-                        if (data.error) {
-                            $('#invoice-err').text('Error: ' + data.error.description + ', (code: ' + data.error.code + ')');
-                        }
-                    },
-                    'invoice-err'
-                );
-            });
+    /**
+     * Get invoice by its KSeF number
+     */
+    public function get_invoice_by_ksef_number(): void
+    {
+        out('get_invoice_by_ksef_number');
 
-            $('#get-invoice').on('click', () => {
-                download(
-                    {
-                        fun: 'ksefInvoiceGet',
-                        invoice_num: $('#get-invoice-num').val()
-                    },
-                    'get-invoice-err'
-                );
-            });
+        if (!$this->ksefNumber) {
+            out('get_invoice_by_ksef_number: skipped, no KSeF number available from previous example');
+            return;
+        }
 
-            $('#query-start').on('click', () => {
-                send(
-                    {
-                        fun: 'ksefInvoiceQueryStart',
-                        iv: $('#session-iv').val(),
-                        enc_key: $('#session-enc-key').val(),
-                        subject_type: $('#query-subject').val(),
-                        from: $('#query-from').val(),
-                        to: $('#query-to').val()
-                    },
-                    (data) => {
-                        $('#query-id').val(data.queryId);
-                    },
-                    'query-err'
-                );
-            });
+        // get by number (we're using number from previous test)
+        $xml = $this->ksefApi->ksefInvoiceGet($this->ksefNumber);
+        if ($xml === false) {
+            $this->fail('ksefInvoiceGet failed');
+        }
 
-            $('#query-status').on('click', () => {
-                send(
-                    {
-                        fun: 'ksefInvoiceQueryStatus',
-                        query_id: $('#query-id').val()
-                    },
-                    (data) => {
-                        $('#query-part').empty();
-                        $.each(data.partNumbers, (idx, val) => {
-                            $('#query-part').append($('<option>', {value: val, text: val}));
-                        });
-                    },
-                    'query-err'
-                );
-            });
+        $path = $this->temp_file('invoice-', '.xml');
+        file_put_contents($path, $xml);
 
-            $('#query-result').on('click', () => {
-                download(
-                    {
-                        fun: 'ksefInvoiceQueryResult',
-                        query_id: $('#query-id').val(),
-                        part_num: $('#query-part').val()
-                    },
-                    'query-err'
-                );
-            });
+        out('Invoice XML: ' . htmlspecialchars($xml));
+        out('Invoice saved to: ' . $path);
+    }
 
-            $('#invoice-visualize').on('click', () => {
-                download(
-                    {
-                        fun: 'ksefInvoiceVisualize',
-                        invoice_num: $('#invoice-num').val(),
-                        invoice: b64EncodeUnicode($('#invoice').val()),
-                        format: $('#invoice-format').val()
-                    },
-                    'invoice-visualize-err'
-                );
-            });
+    /**
+     * Get all invoices from specified time range and type
+     */
+    public function get_invoices_by_time_range(): void
+    {
+        out('get_invoices_by_time_range');
 
-            $('#upload-invoice-id-new').on('click', () => {
-                $('#upload-invoice-id').val(makeid(10));
-            });
+        // start query (get all invoices from last 3 days)
+        $ei = new EncryptionInfo();
+        $ei->setInitVector(base64_encode($this->iv));
+        $ei->setEncryptedKey(base64_encode($this->encKey));
 
-            $('#upload-invoice').on('click', async () => {
-                const input = $('#upload-invoice-file')[0];
-                if (!input.files.length) {
-                    alert('Najpierw wskaż plik XML z fakturą');
-                    return;
-                }
-                const data = await input.files[0].bytes();
-                send(
-                    {
-                        fun: 'boxUploadInvoice',
-                        upload_id: $('#upload-invoice-id').val(),
-                        offline: $('#upload-invoice-offline').val(),
-                        invoice: data.toBase64()
-                    },
-                    (data) => {
-                        if (data.result) {
-                            $('#upload-invoice-res').text('request sent');
-                        } else {
-                            $('#upload-invoice-err').text('request failed');
-                        }
-                    },
-                    'upload-invoice-err'
-                );
-            });
+        $qr = new KsefInvoiceQueryStartRange();
+        $qr->setFrom(DateTime::createFromInterface($this->now->modify('-3 days')));
+        $qr->setTo(DateTime::createFromInterface($this->now));
 
-            $('#upload-invoice-status').on('click', () => {
-                send(
-                    {
-                        fun: 'boxUploadInvoiceStatus',
-                        upload_id: $('#upload-invoice-id').val()
-                    },
-                    (data) => {
-                        $('#upload-invoice-res').text(data.invoiceInfo.status.description + ' ' + (data.invoiceInfo.status.details ?? ''));
-                        if (data.invoiceInfo.ksefNumber) {
-                            $('#upload-invoice-num').val(data.invoiceInfo.ksefNumber);
-                            $('#upload-invoice-date').val(data.invoiceInfo.acquisitionDate);
-                        }
-                    },
-                    'upload-invoice-err'
-                );
-            });
+        $iqs = new KsefInvoiceQueryStartRequest();
+        $iqs->setEncryptionInfo($ei);
+        $iqs->setSubjectType(KsefInvoiceQueryStartRequest::SUBJECT_TYPE_SUBJECT1);
+        $iqs->setRange($qr);
 
-            $('#upload-batch-id-new').on('click', () => {
-                $('#upload-batch-id').val(makeid(10));
-            });
+        $queryId = $this->ksefApi->ksefInvoiceQueryStart($iqs);
+        if ($queryId === false) {
+            $this->fail('ksefInvoiceQueryStart failed');
+        }
 
-            $('#upload-batch').on('click', async () => {
-                const input = $('#upload-batch-file')[0];
-                if (!input.files.length) {
-                    alert('Najpierw wskaż plik ZIP z fakturami');
-                    return;
-                }
-                const data = await input.files[0].bytes();
-                send(
-                    {
-                        fun: 'boxUploadBatch',
-                        upload_id: $('#upload-batch-id').val(),
-                        offline: $('#upload-batch-offline').val(),
-                        invoice_version: $('#upload-batch-ver').val(),
-                        batch: data.toBase64()
-                    },
-                    (data) => {
-                        if (data.result) {
-                            $('#upload-batch-res').text('request sent');
-                        } else {
-                            $('#upload-batch-err').text('request failed');
-                        }
-                    },
-                    'upload-batch-err'
-                );
-            });
+        out('Query id: ' . $queryId);
 
-            $('#upload-batch-status').on('click', () => {
-                send(
-                    {
-                        fun: 'boxUploadBatchStatus',
-                        upload_id: $('#upload-batch-id').val()
-                    },
-                    (data) => {
-                        $('#upload-batch-info').text(JSON.stringify(data));
-                    },
-                    'upload-batch-err'
-                );
-            });
+        // wait for the result (we're using a simple loop here, but in real applications
+        // you should use a more sophisticated method)
+        $iqsr = $this->ksefApi->waitForResult(fn() => $this->ksefApi->ksefInvoiceQueryStatus($queryId));
+        if ($iqsr === false) {
+            $this->fail('ksefInvoiceQueryStatus failed');
+        }
 
-            $('#download-invoices-id-new').on('click', () => {
-                $('#download-invoices-id').val(makeid(10));
-            });
+        out('Number of invoices: ' . $iqsr->getNumberOfInvoices());
 
-            $('#download-invoices').on('click', () => {
-                send(
-                    {
-                        fun: 'boxDownloadInvoices',
-                        download_id: $('#download-invoices-id').val(),
-                        subject_type: $('#download-invoices-subject').val(),
-                        from: $('#download-invoices-from').val(),
-                        to: $('#download-invoices-to').val()
-                    },
-                    (data) => {
-                        if (data.result) {
-                            $('#download-invoices-res').text('request sent');
-                        } else {
-                            $('#download-invoices-err').text('request failed');
-                        }
-                    },
-                    'download-invoices-err'
-                );
-            });
+        // get results
+        foreach ($iqsr->getPartNumbers() as $partNumber) {
+            $data = $this->ksefApi->ksefInvoiceQueryResult($queryId, $partNumber);
+            if ($data === false) {
+                $this->fail('ksefInvoiceQueryResult failed');
+            }
 
-            $('#download-invoices-status').on('click', () => {
-                download(
-                    {
-                        fun: 'boxDownloadInvoicesResult',
-                        download_id: $('#download-invoices-id').val()
-                    },
-                    'download-invoices-err'
-                );
-            });
-        });
-    </script>
+            $path = $this->temp_file('invoices-', '.zip.enc');
+            file_put_contents($path, $data);
+
+            out('Encrypted part saved to: ' . $path);
+        }
+    }
+
+    /**
+     * Generate invoice URL links and QR codes
+     * @return void
+     */
+    public function get_invoice_links(): void
+    {
+        out('get_invoice_links');
+
+        $xml = $this->get_invoice_xml();
+        $hash = $this->ksefApi->getHash($xml);
+
+        // get URLs and QR codes for visualization
+        $il = new KsefInvoiceLinksRequest();
+        $il->setNip($this->sellerNip);
+        $il->setIssueDate(DateTime::createFromInterface($this->now));
+        $il->setInvoiceHash(base64_encode($hash));
+        if ($this->ksefNumber !== null) {
+            $il->setInvoiceKsefNumber($this->ksefNumber);
+        }
+
+        $ilr = $this->ksefApi->ksefInvoiceLinks($il);
+        if ($ilr === false) {
+            $this->fail('ksefInvoiceLinks failed');
+        }
+
+        out('Invoice link: ' . $ilr->getInvoice()->getLink());
+        out('Invoice QR image: ' . $ilr->getInvoice()->getLink());
+
+        if ($ilr->getCertificate() !== null) {
+            out('Certificate link: ' . $ilr->getCertificate()->getLink());
+            out('Certificate QR image: ' . $ilr->getCertificate()->getLink());
+        }
+    }
+
+    /**
+     * Generate an invoice visualization
+     */
+    public function visualize_invoice_xml(): void
+    {
+        out('visualize_invoice_xml');
+
+        $xml = $this->get_invoice_xml();
+
+        // visualize invoice xml as html (official layout from MF)
+        $ivh = new KsefInvoiceVisualizeRequest();
+        $ivh->setOffline(!$this->ksefNumber);
+        if ($this->ksefNumber !== null) {
+            $ivh->setInvoiceKsefNumber($this->ksefNumber);
+        }
+        $ivh->setInvoiceData(base64_encode($xml));
+        $ivh->setOutputFormat(KsefInvoiceVisualizeRequest::OUTPUT_FORMAT_HTML);
+        $ivh->setOutputLanguage(KsefInvoiceVisualizeRequest::OUTPUT_LANGUAGE_PL);
+
+        $html = $this->ksefApi->ksefInvoiceVisualize($ivh);
+        if ($html === false) {
+            $this->fail('ksefInvoiceVisualize(html) failed');
+        }
+
+        $htmlPath = $this->temp_file('invoice-', '.html');
+        file_put_contents($htmlPath, $html);
+
+        out('HTML saved to: ' . $htmlPath);
+
+        // visualize invoice xml as pdf (still needs improvements)
+        $ivp = new KsefInvoiceVisualizeRequest();
+        $ivp->setOffline(!$this->ksefNumber);
+        if ($this->ksefNumber !== null) {
+            $ivp->setInvoiceKsefNumber($this->ksefNumber);
+        }
+        $ivp->setInvoiceData(base64_encode($xml));
+        $ivp->setOutputFormat(KsefInvoiceVisualizeRequest::OUTPUT_FORMAT_PDF);
+        $ivp->setOutputLanguage(KsefInvoiceVisualizeRequest::OUTPUT_LANGUAGE_PL);
+
+        $pdf = $this->ksefApi->ksefInvoiceVisualize($ivp);
+        if ($pdf === false) {
+            $this->fail('ksefInvoiceVisualize(pdf) failed');
+        }
+
+        $pdfPath = $this->temp_file('invoice-', '.pdf');
+        file_put_contents($pdfPath, $pdf);
+
+        out('PDF saved to: ' . $pdfPath);
+    }
+
+    /**
+     * Upload a plain unencrypted invoice to KSeF
+     */
+    public function upload_invoice(): void
+    {
+        out('upload_invoice');
+
+        // sample invoice
+        $xml = $this->get_invoice_xml();
+
+        // this ID should be unique and can be used to link the invoice to any event in the user's system
+        // (e.g., an order number)
+        $uploadId = bin2hex(random_bytes(16));
+
+        $req = new BoxUploadInvoiceRequest();
+        $req->setUploadId($uploadId);
+        $req->setOffline(false);
+        $req->setNotify(false);
+        $req->setUpo(true);
+        $req->setInvoiceData(base64_encode($xml));
+
+        $ok = $this->ksefApi->boxUploadInvoice($req);
+        if (!$ok) {
+            $this->fail('boxUploadInvoice failed');
+        }
+
+        // wait for the result (we're using a simple loop here, but in real applications
+        // you should use a more sophisticated method)
+        $res = $this->ksefApi->waitForResult(fn() => $this->ksefApi->boxUploadInvoiceStatus($uploadId));
+        if ($res === false) {
+            $this->fail('boxUploadInvoiceStatus failed');
+        }
+
+        $this->print_invoice_info($res->getInvoiceInfo());
+        out('Session id: ' . $res->getSessionId());
+
+        if ($res->getUpo() !== null) {
+            $path = $this->temp_file('upo-', '.xml');
+            file_put_contents($path, $res->getUpo());
+
+            out('UPO: ' . htmlspecialchars($res->getUpo()));
+            out('UPO saved to: ' . $path);
+        }
+    }
+
+    /**
+     * Upload a ZIP file (batch) with plain unencrypted invoices to KSeF
+     */
+    public function upload_batch(): void
+    {
+        out('upload_batch');
+
+        // sample batch
+        $batch = $this->create_batch();
+        out('Batch file: ' . $batch);
+
+        $data = file_get_contents($batch);
+        if ($data === false) {
+            throw new RuntimeException('Unable to read batch file: ' . $batch);
+        }
+
+        // this ID should be unique and can be used to link the invoice to any event in the user's system
+        // (e.g., an order number)
+        $uploadId = bin2hex(random_bytes(16));
+
+        $req = new BoxUploadBatchRequest();
+        $req->setUploadId($uploadId);
+        $req->setOffline(true);
+        $req->setNotify(false);
+        $req->setUpo(true);
+        $req->setInvoiceVersion(KsefInvoiceVersion::V3);
+
+        $ok = $this->ksefApi->boxUploadBatch($req, $data);
+        if (!$ok) {
+            $this->fail('boxUploadBatch failed');
+        }
+
+        // wait for the result (we're using a simple loop here, but in real applications
+        // you should use a more sophisticated method)
+        $res = $this->ksefApi->waitForResult(fn() => $this->ksefApi->boxUploadBatchStatus($uploadId));
+        if ($res === false) {
+            $this->fail('boxUploadBatchStatus failed');
+        }
+
+        foreach ($res->getInvoiceInfo() as $ii) {
+            $this->print_invoice_info($ii);
+        }
+
+        out('Session id: ' . $res->getSessionId());
+
+        if ($res->getUpo() !== null) {
+            $path = $this->temp_file('upo-', '.xml');
+            file_put_contents($path, $res->getUpo());
+
+            out('UPO: ' . htmlspecialchars($res->getUpo()));
+            out('UPO saved to: ' . $path);
+        }
+    }
+
+    /**
+     * Download all invoices for specified type and time range from KSeF
+     */
+    public function download_invoices(): void
+    {
+        out('download_invoices');
+
+        // this ID should be unique and can be used to link the invoice to any event in the user's system
+        $downloadId = bin2hex(random_bytes(16));
+
+        $range = new KsefInvoiceQueryStartRange();
+        $range->setFrom(DateTime::createFromInterface($this->now->modify('-3 days')));
+        $range->setTo(DateTime::createFromInterface($this->now));
+
+        $req = new BoxDownloadInvoicesRequest();
+        $req->setDownloadId($downloadId);
+        $req->setNotify(false);
+        $req->setSubjectType(BoxDownloadInvoicesRequest::SUBJECT_TYPE_SUBJECT1);
+        $req->setRange($range);
+
+        $ok = $this->ksefApi->boxDownloadInvoices($req);
+        if (!$ok) {
+            $this->fail('boxDownloadInvoices failed');
+        }
+
+        // wait for the result (we're using a simple loop here, but in real applications
+        // you should use a more sophisticated method)
+        $res = $this->ksefApi->waitForResult(fn() => $this->ksefApi->boxDownloadInvoicesResult($downloadId));
+        if ($res === false) {
+            $this->fail('boxDownloadInvoicesResult failed');
+        }
+
+        // res buffer contains the bytes of a plain, unencrypted ZIP archive that includes the invoices
+        // and a metadata file
+        $path = $this->temp_file('invoices-', '.zip');
+        file_put_contents($path, $res);
+
+        out('Invoices saved to: ' . $path);
+    }
+}
+
+try {
+    $prog = new Program();
+
+    // test some typical use cases
+
+    // basic functions
+    $prog->create_invoice_xml();
+    $prog->validate_invoice_xml();
+
+    $prog->create_and_send_invoice();
+    $prog->create_and_send_batch();
+
+    $prog->get_invoice_links();
+    $prog->visualize_invoice_xml();
+
+    $prog->get_invoice_by_ksef_number();
+    $prog->get_invoices_by_time_range();
+
+    // black-box functions
+    $prog->upload_invoice();
+    $prog->upload_batch();
+
+    $prog->download_invoices();
+} catch (Throwable $e) {
+    out('ERR: ' . $e);
+}
+
+?>
+</body>
 </html>
