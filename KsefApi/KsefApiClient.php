@@ -63,7 +63,7 @@ use SplFileObject;
  */
 class KsefApiClient
 {
-    const VERSION = '2.0.3';
+    const VERSION = '2.0.4';
 
     const PRODUCTION_URL = 'https://ksefapi.pl/api';
     const TEST_URL = 'https://ksefapi.pl/api-test';
