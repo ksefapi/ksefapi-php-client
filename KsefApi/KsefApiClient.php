@@ -37,6 +37,8 @@ use KsefApi\Model\Faktura;
 use KsefApi\Model\KsefInvoiceGenerateRequest;
 use KsefApi\Model\KsefInvoiceLinksRequest;
 use KsefApi\Model\KsefInvoiceLinksResponse;
+use KsefApi\Model\KsefInvoiceMetadataRequest;
+use KsefApi\Model\KsefInvoiceMetadataResponse;
 use KsefApi\Model\KsefInvoiceQueryStartRequest;
 use KsefApi\Model\KsefInvoiceQueryStartResponse;
 use KsefApi\Model\KsefInvoiceQueryStatusResponse;
@@ -53,6 +55,7 @@ use KsefApi\Model\KsefSessionOpenBatchResponse;
 use KsefApi\Model\KsefSessionOpenOnlineRequest;
 use KsefApi\Model\KsefSessionOpenOnlineResponse;
 use KsefApi\Model\KsefSessionStatusResponse;
+use KsefApi\Model\KsefUpoVisualizeRequest;
 use phpseclib3\Crypt\AES;
 use phpseclib3\Crypt\PublicKeyLoader;
 use phpseclib3\Crypt\RSA;
@@ -63,7 +66,7 @@ use SplFileObject;
  */
 class KsefApiClient
 {
-    const VERSION = '2.0.4';
+    const VERSION = '2.0.5';
 
     const PRODUCTION_URL = 'https://ksefapi.pl/api';
     const TEST_URL = 'https://ksefapi.pl/api-test';
@@ -571,6 +574,40 @@ class KsefApiClient
     }
 
     /**
+     * Get invoices metadata
+     * @param KsefInvoiceMetadataRequest $req request object
+     * @return KsefInvoiceMetadataResponse|false invoices metadata
+     */
+    public function ksefInvoiceMetadata(KsefInvoiceMetadataRequest $req): KsefInvoiceMetadataResponse|false
+    {
+        // clear error
+        $this->clear();
+
+        // send request
+        $body = $this->sendObject($req);
+        if (! $body) {
+            return false;
+        }
+
+        $url = ($this->url . '/invoice/metadata');
+
+        $res = $this->send($url, 'application/json', $body, array('application/json'));
+        if (! $res) {
+            return false;
+        }
+
+        // parse response
+        /** @var KsefInvoiceMetadataResponse $obj */
+        $obj = $this->getObject($res, '\KsefApi\Model\KsefInvoiceMetadataResponse');
+
+        if (! $obj) {
+            return false;
+        }
+
+        return $obj;
+    }
+
+    /**
      * Start a new invoice query
      * @param KsefInvoiceQueryStartRequest $req request object
      * @return string|false new query id
@@ -708,6 +745,32 @@ class KsefApiClient
         $url = ($this->url . '/invoice/visualize');
 
         $res = $this->send($url, 'application/json', $body, array('application/pdf', 'text/html', 'application/json'));
+        if (! $res) {
+            return false;
+        }
+
+        return $res;
+    }
+
+    /**
+     * Generate UPO visualization
+     * @param KsefUpoVisualizeRequest $req request object
+     * @return string|false UPO visualization in requested format
+     */
+    public function ksefUpoVisualize(KsefUpoVisualizeRequest $req): string|false
+    {
+        // clear error
+        $this->clear();
+
+        // send request
+        $body = $this->sendObject($req);
+        if (! $body) {
+            return false;
+        }
+
+        $url = ($this->url . '/invoice/upo/visualize');
+
+        $res = $this->send($url, 'application/json', $body, array('application/pdf', 'application/json'));
         if (! $res) {
             return false;
         }
@@ -944,9 +1007,7 @@ class KsefApiClient
                     return false;
                 }
             } else if ($res instanceof KsefSessionStatusResponse) {
-                if ($res->getSessionInfo()->getStatus()->getCode() < 200
-                    && $res->getSessionInfo()->getStatus()->getCode() != 170) {
-
+                if ($res->getSessionInfo()->getStatus()->getCode() < 200) {
                     // still processing
                     sleep($seconds);
                     continue;

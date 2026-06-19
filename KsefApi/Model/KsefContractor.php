@@ -1,6 +1,6 @@
 <?php
 /**
- * DaneKontaktowe
+ * KsefContractor
  *
  * PHP version 8.1
  *
@@ -32,16 +32,15 @@ use \ArrayAccess;
 use \KsefApi\ObjectSerializer;
 
 /**
- * DaneKontaktowe Class Doc Comment
+ * KsefContractor Class Doc Comment
  *
  * @category Class
- * @description Contact data
  * @package  KsefApi
  * @author   OpenAPI Generator team
  * @link     https://openapi-generator.tech
  * @implements \ArrayAccess<string, mixed>
  */
-class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
+class KsefContractor implements ModelInterface, ArrayAccess, \JsonSerializable
 {
     public const DISCRIMINATOR = null;
 
@@ -50,7 +49,7 @@ class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
      *
      * @var string
      */
-    protected static $openAPIModelName = 'DaneKontaktowe';
+    protected static $openAPIModelName = 'KsefContractor';
 
     /**
      * Array of property to type mappings. Used for (de)serialization
@@ -58,8 +57,9 @@ class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
      * @var string[]
      */
     protected static $openAPITypes = [
-        'email' => 'string',
-        'telefon' => 'string'
+        'identifier' => 'string',
+        'name' => 'string',
+        'address' => 'string'
     ];
 
     /**
@@ -70,8 +70,9 @@ class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
      * @psalm-var array<string, string|null>
      */
     protected static $openAPIFormats = [
-        'email' => null,
-        'telefon' => null
+        'identifier' => null,
+        'name' => null,
+        'address' => null
     ];
 
     /**
@@ -80,8 +81,9 @@ class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
      * @var boolean[]
      */
     protected static array $openAPINullables = [
-        'email' => false,
-        'telefon' => false
+        'identifier' => false,
+        'name' => false,
+        'address' => false
     ];
 
     /**
@@ -170,8 +172,9 @@ class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
      * @var string[]
      */
     protected static $attributeMap = [
-        'email' => 'Email',
-        'telefon' => 'Telefon'
+        'identifier' => 'identifier',
+        'name' => 'name',
+        'address' => 'address'
     ];
 
     /**
@@ -180,8 +183,9 @@ class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
      * @var string[]
      */
     protected static $setters = [
-        'email' => 'setEmail',
-        'telefon' => 'setTelefon'
+        'identifier' => 'setIdentifier',
+        'name' => 'setName',
+        'address' => 'setAddress'
     ];
 
     /**
@@ -190,8 +194,9 @@ class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
      * @var string[]
      */
     protected static $getters = [
-        'email' => 'getEmail',
-        'telefon' => 'getTelefon'
+        'identifier' => 'getIdentifier',
+        'name' => 'getName',
+        'address' => 'getAddress'
     ];
 
     /**
@@ -251,8 +256,9 @@ class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
      */
     public function __construct(?array $data = null)
     {
-        $this->setIfExists('email', $data ?? [], null);
-        $this->setIfExists('telefon', $data ?? [], null);
+        $this->setIfExists('identifier', $data ?? [], null);
+        $this->setIfExists('name', $data ?? [], null);
+        $this->setIfExists('address', $data ?? [], null);
     }
 
     /**
@@ -282,22 +288,12 @@ class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
     {
         $invalidProperties = [];
 
-        if (!is_null($this->container['email']) && (mb_strlen($this->container['email']) > 255)) {
-            $invalidProperties[] = "invalid value for 'email', the character length must be smaller than or equal to 255.";
+        if ($this->container['identifier'] === null) {
+            $invalidProperties[] = "'identifier' can't be null";
         }
-
-        if (!is_null($this->container['email']) && (mb_strlen($this->container['email']) < 3)) {
-            $invalidProperties[] = "invalid value for 'email', the character length must be bigger than or equal to 3.";
+        if ($this->container['name'] === null) {
+            $invalidProperties[] = "'name' can't be null";
         }
-
-        if (!is_null($this->container['email']) && !preg_match("/^(.)+@(.)+$/", $this->container['email'])) {
-            $invalidProperties[] = "invalid value for 'email', must be conform to the pattern /^(.)+@(.)+$/.";
-        }
-
-        if (!is_null($this->container['telefon']) && (mb_strlen($this->container['telefon']) > 16)) {
-            $invalidProperties[] = "invalid value for 'telefon', the character length must be smaller than or equal to 16.";
-        }
-
         return $invalidProperties;
     }
 
@@ -314,69 +310,82 @@ class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
 
 
     /**
-     * Gets email
+     * Gets identifier
      *
-     * @return string|null
+     * @return string
      */
-    public function getEmail()
+    public function getIdentifier()
     {
-        return $this->container['email'];
+        return $this->container['identifier'];
     }
 
     /**
-     * Sets email
+     * Sets identifier
      *
-     * @param string|null $email Email address
+     * @param string $identifier identifier
      *
      * @return self
      */
-    public function setEmail($email)
+    public function setIdentifier($identifier)
     {
-        if (is_null($email)) {
-            throw new \InvalidArgumentException('non-nullable email cannot be null');
+        if (is_null($identifier)) {
+            throw new \InvalidArgumentException('non-nullable identifier cannot be null');
         }
-        if ((mb_strlen($email) > 255)) {
-            throw new \InvalidArgumentException('invalid length for $email when calling DaneKontaktowe., must be smaller than or equal to 255.');
-        }
-        if ((mb_strlen($email) < 3)) {
-            throw new \InvalidArgumentException('invalid length for $email when calling DaneKontaktowe., must be bigger than or equal to 3.');
-        }
-        if ((!preg_match("/^(.)+@(.)+$/", ObjectSerializer::toString($email)))) {
-            throw new \InvalidArgumentException("invalid value for \$email when calling DaneKontaktowe., must conform to the pattern /^(.)+@(.)+$/.");
-        }
-
-        $this->container['email'] = $email;
+        $this->container['identifier'] = $identifier;
 
         return $this;
     }
 
     /**
-     * Gets telefon
+     * Gets name
      *
-     * @return string|null
+     * @return string
      */
-    public function getTelefon()
+    public function getName()
     {
-        return $this->container['telefon'];
+        return $this->container['name'];
     }
 
     /**
-     * Sets telefon
+     * Sets name
      *
-     * @param string|null $telefon Phone number
+     * @param string $name name
      *
      * @return self
      */
-    public function setTelefon($telefon)
+    public function setName($name)
     {
-        if (is_null($telefon)) {
-            throw new \InvalidArgumentException('non-nullable telefon cannot be null');
+        if (is_null($name)) {
+            throw new \InvalidArgumentException('non-nullable name cannot be null');
         }
-        if ((mb_strlen($telefon) > 16)) {
-            throw new \InvalidArgumentException('invalid length for $telefon when calling DaneKontaktowe., must be smaller than or equal to 16.');
-        }
+        $this->container['name'] = $name;
 
-        $this->container['telefon'] = $telefon;
+        return $this;
+    }
+
+    /**
+     * Gets address
+     *
+     * @return string|null
+     */
+    public function getAddress()
+    {
+        return $this->container['address'];
+    }
+
+    /**
+     * Sets address
+     *
+     * @param string|null $address address
+     *
+     * @return self
+     */
+    public function setAddress($address)
+    {
+        if (is_null($address)) {
+            throw new \InvalidArgumentException('non-nullable address cannot be null');
+        }
+        $this->container['address'] = $address;
 
         return $this;
     }

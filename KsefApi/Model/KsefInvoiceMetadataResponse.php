@@ -1,6 +1,6 @@
 <?php
 /**
- * DaneKontaktowe
+ * KsefInvoiceMetadataResponse
  *
  * PHP version 8.1
  *
@@ -32,16 +32,15 @@ use \ArrayAccess;
 use \KsefApi\ObjectSerializer;
 
 /**
- * DaneKontaktowe Class Doc Comment
+ * KsefInvoiceMetadataResponse Class Doc Comment
  *
  * @category Class
- * @description Contact data
  * @package  KsefApi
  * @author   OpenAPI Generator team
  * @link     https://openapi-generator.tech
  * @implements \ArrayAccess<string, mixed>
  */
-class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
+class KsefInvoiceMetadataResponse implements ModelInterface, ArrayAccess, \JsonSerializable
 {
     public const DISCRIMINATOR = null;
 
@@ -50,7 +49,7 @@ class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
      *
      * @var string
      */
-    protected static $openAPIModelName = 'DaneKontaktowe';
+    protected static $openAPIModelName = 'KsefInvoiceMetadataResponse';
 
     /**
      * Array of property to type mappings. Used for (de)serialization
@@ -58,8 +57,10 @@ class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
      * @var string[]
      */
     protected static $openAPITypes = [
-        'email' => 'string',
-        'telefon' => 'string'
+        'has_more' => 'bool',
+        'is_truncated' => 'bool',
+        'permanent_storage_date' => '\DateTime',
+        'invoices' => '\KsefApi\Model\KsefInvoiceMetadata[]'
     ];
 
     /**
@@ -70,8 +71,10 @@ class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
      * @psalm-var array<string, string|null>
      */
     protected static $openAPIFormats = [
-        'email' => null,
-        'telefon' => null
+        'has_more' => null,
+        'is_truncated' => null,
+        'permanent_storage_date' => 'date-time',
+        'invoices' => null
     ];
 
     /**
@@ -80,8 +83,10 @@ class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
      * @var boolean[]
      */
     protected static array $openAPINullables = [
-        'email' => false,
-        'telefon' => false
+        'has_more' => false,
+        'is_truncated' => false,
+        'permanent_storage_date' => false,
+        'invoices' => false
     ];
 
     /**
@@ -170,8 +175,10 @@ class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
      * @var string[]
      */
     protected static $attributeMap = [
-        'email' => 'Email',
-        'telefon' => 'Telefon'
+        'has_more' => 'hasMore',
+        'is_truncated' => 'isTruncated',
+        'permanent_storage_date' => 'permanentStorageDate',
+        'invoices' => 'invoices'
     ];
 
     /**
@@ -180,8 +187,10 @@ class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
      * @var string[]
      */
     protected static $setters = [
-        'email' => 'setEmail',
-        'telefon' => 'setTelefon'
+        'has_more' => 'setHasMore',
+        'is_truncated' => 'setIsTruncated',
+        'permanent_storage_date' => 'setPermanentStorageDate',
+        'invoices' => 'setInvoices'
     ];
 
     /**
@@ -190,8 +199,10 @@ class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
      * @var string[]
      */
     protected static $getters = [
-        'email' => 'getEmail',
-        'telefon' => 'getTelefon'
+        'has_more' => 'getHasMore',
+        'is_truncated' => 'getIsTruncated',
+        'permanent_storage_date' => 'getPermanentStorageDate',
+        'invoices' => 'getInvoices'
     ];
 
     /**
@@ -251,8 +262,10 @@ class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
      */
     public function __construct(?array $data = null)
     {
-        $this->setIfExists('email', $data ?? [], null);
-        $this->setIfExists('telefon', $data ?? [], null);
+        $this->setIfExists('has_more', $data ?? [], null);
+        $this->setIfExists('is_truncated', $data ?? [], null);
+        $this->setIfExists('permanent_storage_date', $data ?? [], null);
+        $this->setIfExists('invoices', $data ?? [], null);
     }
 
     /**
@@ -282,22 +295,15 @@ class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
     {
         $invalidProperties = [];
 
-        if (!is_null($this->container['email']) && (mb_strlen($this->container['email']) > 255)) {
-            $invalidProperties[] = "invalid value for 'email', the character length must be smaller than or equal to 255.";
+        if ($this->container['has_more'] === null) {
+            $invalidProperties[] = "'has_more' can't be null";
         }
-
-        if (!is_null($this->container['email']) && (mb_strlen($this->container['email']) < 3)) {
-            $invalidProperties[] = "invalid value for 'email', the character length must be bigger than or equal to 3.";
+        if ($this->container['is_truncated'] === null) {
+            $invalidProperties[] = "'is_truncated' can't be null";
         }
-
-        if (!is_null($this->container['email']) && !preg_match("/^(.)+@(.)+$/", $this->container['email'])) {
-            $invalidProperties[] = "invalid value for 'email', must be conform to the pattern /^(.)+@(.)+$/.";
+        if ($this->container['invoices'] === null) {
+            $invalidProperties[] = "'invoices' can't be null";
         }
-
-        if (!is_null($this->container['telefon']) && (mb_strlen($this->container['telefon']) > 16)) {
-            $invalidProperties[] = "invalid value for 'telefon', the character length must be smaller than or equal to 16.";
-        }
-
         return $invalidProperties;
     }
 
@@ -314,69 +320,109 @@ class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
 
 
     /**
-     * Gets email
+     * Gets has_more
      *
-     * @return string|null
+     * @return bool
      */
-    public function getEmail()
+    public function getHasMore()
     {
-        return $this->container['email'];
+        return $this->container['has_more'];
     }
 
     /**
-     * Sets email
+     * Sets has_more
      *
-     * @param string|null $email Email address
+     * @param bool $has_more has_more
      *
      * @return self
      */
-    public function setEmail($email)
+    public function setHasMore($has_more)
     {
-        if (is_null($email)) {
-            throw new \InvalidArgumentException('non-nullable email cannot be null');
+        if (is_null($has_more)) {
+            throw new \InvalidArgumentException('non-nullable has_more cannot be null');
         }
-        if ((mb_strlen($email) > 255)) {
-            throw new \InvalidArgumentException('invalid length for $email when calling DaneKontaktowe., must be smaller than or equal to 255.');
-        }
-        if ((mb_strlen($email) < 3)) {
-            throw new \InvalidArgumentException('invalid length for $email when calling DaneKontaktowe., must be bigger than or equal to 3.');
-        }
-        if ((!preg_match("/^(.)+@(.)+$/", ObjectSerializer::toString($email)))) {
-            throw new \InvalidArgumentException("invalid value for \$email when calling DaneKontaktowe., must conform to the pattern /^(.)+@(.)+$/.");
-        }
-
-        $this->container['email'] = $email;
+        $this->container['has_more'] = $has_more;
 
         return $this;
     }
 
     /**
-     * Gets telefon
+     * Gets is_truncated
      *
-     * @return string|null
+     * @return bool
      */
-    public function getTelefon()
+    public function getIsTruncated()
     {
-        return $this->container['telefon'];
+        return $this->container['is_truncated'];
     }
 
     /**
-     * Sets telefon
+     * Sets is_truncated
      *
-     * @param string|null $telefon Phone number
+     * @param bool $is_truncated is_truncated
      *
      * @return self
      */
-    public function setTelefon($telefon)
+    public function setIsTruncated($is_truncated)
     {
-        if (is_null($telefon)) {
-            throw new \InvalidArgumentException('non-nullable telefon cannot be null');
+        if (is_null($is_truncated)) {
+            throw new \InvalidArgumentException('non-nullable is_truncated cannot be null');
         }
-        if ((mb_strlen($telefon) > 16)) {
-            throw new \InvalidArgumentException('invalid length for $telefon when calling DaneKontaktowe., must be smaller than or equal to 16.');
-        }
+        $this->container['is_truncated'] = $is_truncated;
 
-        $this->container['telefon'] = $telefon;
+        return $this;
+    }
+
+    /**
+     * Gets permanent_storage_date
+     *
+     * @return \DateTime|null
+     */
+    public function getPermanentStorageDate()
+    {
+        return $this->container['permanent_storage_date'];
+    }
+
+    /**
+     * Sets permanent_storage_date
+     *
+     * @param \DateTime|null $permanent_storage_date permanent_storage_date
+     *
+     * @return self
+     */
+    public function setPermanentStorageDate($permanent_storage_date)
+    {
+        if (is_null($permanent_storage_date)) {
+            throw new \InvalidArgumentException('non-nullable permanent_storage_date cannot be null');
+        }
+        $this->container['permanent_storage_date'] = $permanent_storage_date;
+
+        return $this;
+    }
+
+    /**
+     * Gets invoices
+     *
+     * @return \KsefApi\Model\KsefInvoiceMetadata[]
+     */
+    public function getInvoices()
+    {
+        return $this->container['invoices'];
+    }
+
+    /**
+     * Sets invoices
+     *
+     * @param \KsefApi\Model\KsefInvoiceMetadata[] $invoices invoices
+     *
+     * @return self
+     */
+    public function setInvoices($invoices)
+    {
+        if (is_null($invoices)) {
+            throw new \InvalidArgumentException('non-nullable invoices cannot be null');
+        }
+        $this->container['invoices'] = $invoices;
 
         return $this;
     }

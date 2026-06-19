@@ -1,6 +1,6 @@
 <?php
 /**
- * DaneKontaktowe
+ * KsefInvoiceMetadataRequest
  *
  * PHP version 8.1
  *
@@ -32,16 +32,15 @@ use \ArrayAccess;
 use \KsefApi\ObjectSerializer;
 
 /**
- * DaneKontaktowe Class Doc Comment
+ * KsefInvoiceMetadataRequest Class Doc Comment
  *
  * @category Class
- * @description Contact data
  * @package  KsefApi
  * @author   OpenAPI Generator team
  * @link     https://openapi-generator.tech
  * @implements \ArrayAccess<string, mixed>
  */
-class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
+class KsefInvoiceMetadataRequest implements ModelInterface, ArrayAccess, \JsonSerializable
 {
     public const DISCRIMINATOR = null;
 
@@ -50,7 +49,7 @@ class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
      *
      * @var string
      */
-    protected static $openAPIModelName = 'DaneKontaktowe';
+    protected static $openAPIModelName = 'KsefInvoiceMetadataRequest';
 
     /**
      * Array of property to type mappings. Used for (de)serialization
@@ -58,8 +57,11 @@ class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
      * @var string[]
      */
     protected static $openAPITypes = [
-        'email' => 'string',
-        'telefon' => 'string'
+        'subject_type' => 'string',
+        'range' => '\KsefApi\Model\KsefInvoiceQueryStartRange',
+        'page_offset' => 'int',
+        'page_size' => 'int',
+        'sort_asc' => 'bool'
     ];
 
     /**
@@ -70,8 +72,11 @@ class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
      * @psalm-var array<string, string|null>
      */
     protected static $openAPIFormats = [
-        'email' => null,
-        'telefon' => null
+        'subject_type' => null,
+        'range' => null,
+        'page_offset' => 'int32',
+        'page_size' => 'int32',
+        'sort_asc' => null
     ];
 
     /**
@@ -80,8 +85,11 @@ class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
      * @var boolean[]
      */
     protected static array $openAPINullables = [
-        'email' => false,
-        'telefon' => false
+        'subject_type' => false,
+        'range' => false,
+        'page_offset' => false,
+        'page_size' => false,
+        'sort_asc' => false
     ];
 
     /**
@@ -170,8 +178,11 @@ class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
      * @var string[]
      */
     protected static $attributeMap = [
-        'email' => 'Email',
-        'telefon' => 'Telefon'
+        'subject_type' => 'subjectType',
+        'range' => 'range',
+        'page_offset' => 'pageOffset',
+        'page_size' => 'pageSize',
+        'sort_asc' => 'sortAsc'
     ];
 
     /**
@@ -180,8 +191,11 @@ class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
      * @var string[]
      */
     protected static $setters = [
-        'email' => 'setEmail',
-        'telefon' => 'setTelefon'
+        'subject_type' => 'setSubjectType',
+        'range' => 'setRange',
+        'page_offset' => 'setPageOffset',
+        'page_size' => 'setPageSize',
+        'sort_asc' => 'setSortAsc'
     ];
 
     /**
@@ -190,8 +204,11 @@ class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
      * @var string[]
      */
     protected static $getters = [
-        'email' => 'getEmail',
-        'telefon' => 'getTelefon'
+        'subject_type' => 'getSubjectType',
+        'range' => 'getRange',
+        'page_offset' => 'getPageOffset',
+        'page_size' => 'getPageSize',
+        'sort_asc' => 'getSortAsc'
     ];
 
     /**
@@ -235,6 +252,25 @@ class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
         return self::$openAPIModelName;
     }
 
+    public const SUBJECT_TYPE_SUBJECT1 = 'Subject1';
+    public const SUBJECT_TYPE_SUBJECT2 = 'Subject2';
+    public const SUBJECT_TYPE_SUBJECT3 = 'Subject3';
+    public const SUBJECT_TYPE_SUBJECT_AUTHORIZED = 'SubjectAuthorized';
+
+    /**
+     * Gets allowable values of the enum
+     *
+     * @return string[]
+     */
+    public function getSubjectTypeAllowableValues()
+    {
+        return [
+            self::SUBJECT_TYPE_SUBJECT1,
+            self::SUBJECT_TYPE_SUBJECT2,
+            self::SUBJECT_TYPE_SUBJECT3,
+            self::SUBJECT_TYPE_SUBJECT_AUTHORIZED,
+        ];
+    }
 
     /**
      * Associative array for storing property values
@@ -251,8 +287,11 @@ class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
      */
     public function __construct(?array $data = null)
     {
-        $this->setIfExists('email', $data ?? [], null);
-        $this->setIfExists('telefon', $data ?? [], null);
+        $this->setIfExists('subject_type', $data ?? [], null);
+        $this->setIfExists('range', $data ?? [], null);
+        $this->setIfExists('page_offset', $data ?? [], null);
+        $this->setIfExists('page_size', $data ?? [], null);
+        $this->setIfExists('sort_asc', $data ?? [], null);
     }
 
     /**
@@ -282,22 +321,30 @@ class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
     {
         $invalidProperties = [];
 
-        if (!is_null($this->container['email']) && (mb_strlen($this->container['email']) > 255)) {
-            $invalidProperties[] = "invalid value for 'email', the character length must be smaller than or equal to 255.";
+        if ($this->container['subject_type'] === null) {
+            $invalidProperties[] = "'subject_type' can't be null";
+        }
+        $allowedValues = $this->getSubjectTypeAllowableValues();
+        if (!is_null($this->container['subject_type']) && !in_array($this->container['subject_type'], $allowedValues, true)) {
+            $invalidProperties[] = sprintf(
+                "invalid value '%s' for 'subject_type', must be one of '%s'",
+                $this->container['subject_type'],
+                implode("', '", $allowedValues)
+            );
         }
 
-        if (!is_null($this->container['email']) && (mb_strlen($this->container['email']) < 3)) {
-            $invalidProperties[] = "invalid value for 'email', the character length must be bigger than or equal to 3.";
+        if ($this->container['range'] === null) {
+            $invalidProperties[] = "'range' can't be null";
         }
-
-        if (!is_null($this->container['email']) && !preg_match("/^(.)+@(.)+$/", $this->container['email'])) {
-            $invalidProperties[] = "invalid value for 'email', must be conform to the pattern /^(.)+@(.)+$/.";
+        if ($this->container['page_offset'] === null) {
+            $invalidProperties[] = "'page_offset' can't be null";
         }
-
-        if (!is_null($this->container['telefon']) && (mb_strlen($this->container['telefon']) > 16)) {
-            $invalidProperties[] = "invalid value for 'telefon', the character length must be smaller than or equal to 16.";
+        if ($this->container['page_size'] === null) {
+            $invalidProperties[] = "'page_size' can't be null";
         }
-
+        if ($this->container['sort_asc'] === null) {
+            $invalidProperties[] = "'sort_asc' can't be null";
+        }
         return $invalidProperties;
     }
 
@@ -314,69 +361,146 @@ class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
 
 
     /**
-     * Gets email
+     * Gets subject_type
      *
-     * @return string|null
+     * @return string
      */
-    public function getEmail()
+    public function getSubjectType()
     {
-        return $this->container['email'];
+        return $this->container['subject_type'];
     }
 
     /**
-     * Sets email
+     * Sets subject_type
      *
-     * @param string|null $email Email address
+     * @param string $subject_type subject_type
      *
      * @return self
      */
-    public function setEmail($email)
+    public function setSubjectType($subject_type)
     {
-        if (is_null($email)) {
-            throw new \InvalidArgumentException('non-nullable email cannot be null');
+        if (is_null($subject_type)) {
+            throw new \InvalidArgumentException('non-nullable subject_type cannot be null');
         }
-        if ((mb_strlen($email) > 255)) {
-            throw new \InvalidArgumentException('invalid length for $email when calling DaneKontaktowe., must be smaller than or equal to 255.');
+        $allowedValues = $this->getSubjectTypeAllowableValues();
+        if (!in_array($subject_type, $allowedValues, true)) {
+            throw new \InvalidArgumentException(
+                sprintf(
+                    "Invalid value '%s' for 'subject_type', must be one of '%s'",
+                    $subject_type,
+                    implode("', '", $allowedValues)
+                )
+            );
         }
-        if ((mb_strlen($email) < 3)) {
-            throw new \InvalidArgumentException('invalid length for $email when calling DaneKontaktowe., must be bigger than or equal to 3.');
-        }
-        if ((!preg_match("/^(.)+@(.)+$/", ObjectSerializer::toString($email)))) {
-            throw new \InvalidArgumentException("invalid value for \$email when calling DaneKontaktowe., must conform to the pattern /^(.)+@(.)+$/.");
-        }
-
-        $this->container['email'] = $email;
+        $this->container['subject_type'] = $subject_type;
 
         return $this;
     }
 
     /**
-     * Gets telefon
+     * Gets range
      *
-     * @return string|null
+     * @return \KsefApi\Model\KsefInvoiceQueryStartRange
      */
-    public function getTelefon()
+    public function getRange()
     {
-        return $this->container['telefon'];
+        return $this->container['range'];
     }
 
     /**
-     * Sets telefon
+     * Sets range
      *
-     * @param string|null $telefon Phone number
+     * @param \KsefApi\Model\KsefInvoiceQueryStartRange $range range
      *
      * @return self
      */
-    public function setTelefon($telefon)
+    public function setRange($range)
     {
-        if (is_null($telefon)) {
-            throw new \InvalidArgumentException('non-nullable telefon cannot be null');
+        if (is_null($range)) {
+            throw new \InvalidArgumentException('non-nullable range cannot be null');
         }
-        if ((mb_strlen($telefon) > 16)) {
-            throw new \InvalidArgumentException('invalid length for $telefon when calling DaneKontaktowe., must be smaller than or equal to 16.');
-        }
+        $this->container['range'] = $range;
 
-        $this->container['telefon'] = $telefon;
+        return $this;
+    }
+
+    /**
+     * Gets page_offset
+     *
+     * @return int
+     */
+    public function getPageOffset()
+    {
+        return $this->container['page_offset'];
+    }
+
+    /**
+     * Sets page_offset
+     *
+     * @param int $page_offset page_offset
+     *
+     * @return self
+     */
+    public function setPageOffset($page_offset)
+    {
+        if (is_null($page_offset)) {
+            throw new \InvalidArgumentException('non-nullable page_offset cannot be null');
+        }
+        $this->container['page_offset'] = $page_offset;
+
+        return $this;
+    }
+
+    /**
+     * Gets page_size
+     *
+     * @return int
+     */
+    public function getPageSize()
+    {
+        return $this->container['page_size'];
+    }
+
+    /**
+     * Sets page_size
+     *
+     * @param int $page_size page_size
+     *
+     * @return self
+     */
+    public function setPageSize($page_size)
+    {
+        if (is_null($page_size)) {
+            throw new \InvalidArgumentException('non-nullable page_size cannot be null');
+        }
+        $this->container['page_size'] = $page_size;
+
+        return $this;
+    }
+
+    /**
+     * Gets sort_asc
+     *
+     * @return bool
+     */
+    public function getSortAsc()
+    {
+        return $this->container['sort_asc'];
+    }
+
+    /**
+     * Sets sort_asc
+     *
+     * @param bool $sort_asc sort_asc
+     *
+     * @return self
+     */
+    public function setSortAsc($sort_asc)
+    {
+        if (is_null($sort_asc)) {
+            throw new \InvalidArgumentException('non-nullable sort_asc cannot be null');
+        }
+        $this->container['sort_asc'] = $sort_asc;
 
         return $this;
     }

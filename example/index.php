@@ -47,6 +47,7 @@ use KsefApi\Model\KsefInvoiceVersion;
 use KsefApi\Model\KsefInvoiceVisualizeRequest;
 use KsefApi\Model\KsefSessionOpenBatchRequest;
 use KsefApi\Model\KsefSessionOpenOnlineRequest;
+use KsefApi\Model\KsefUpoVisualizeRequest;
 use KsefApi\Model\NoweSrodkiTransportu;
 use KsefApi\Model\Platnosc;
 use KsefApi\Model\PMarzy;
@@ -540,6 +541,36 @@ class Program {
     }
 
     /**
+     * Saves UPO to file
+     * @param string $xml UPO XML bytes
+     * @return void
+     */
+    private function save_upo(string $xml): void
+    {
+        // save xml
+        $path = $this->temp_file('upo-', '.xml');
+        file_put_contents($path, $xml);
+
+        out('UPO saved to:               ' . $path);
+
+        // get visualization
+        $req = new KsefUpoVisualizeRequest();
+        $req->setUpoData(base64_encode($xml));
+        $req->setOutputFormat(KsefUpoVisualizeRequest::OUTPUT_FORMAT_PDF);
+        $req->setOutputLanguage(KsefUpoVisualizeRequest::OUTPUT_LANGUAGE_PL);
+
+        $pdf = $this->ksefApi->ksefUpoVisualize($req);
+        if ($pdf === false) {
+            $this->fail('ksefUpoVisualize failed');
+        }
+
+        $path = $this->temp_file('upo-', '.pdf');
+        file_put_contents($path, $pdf);
+
+        out('UPO visualization saved to: ' . $path);
+    }
+
+    /**
      * Create invoice XML
      */
     public function create_invoice_xml(): void
@@ -665,11 +696,8 @@ class Program {
             $this->fail('ksefSessionUpo failed');
         }
 
-        $path = $this->temp_file('upo-', '.xml');
-        file_put_contents($path, $upo);
-
         out('UPO: ' . htmlspecialchars($upo));
-        out('UPO saved to: ' . $path);
+        $this->save_upo($upo);
     }
 
     /**
@@ -774,11 +802,8 @@ class Program {
             $this->fail('ksefSessionUpo failed');
         }
 
-        $path = $this->temp_file('upo-', '.xml');
-        file_put_contents($path, $upo);
-
         out('UPO: ' . htmlspecialchars($upo));
-        out('UPO saved to: ' . $path);
+        $this->save_upo($upo);
     }
 
     /**
@@ -978,11 +1003,9 @@ class Program {
         out('Session id: ' . $res->getSessionId());
 
         if ($res->getUpo() !== null) {
-            $path = $this->temp_file('upo-', '.xml');
-            file_put_contents($path, $res->getUpo());
-
-            out('UPO: ' . htmlspecialchars($res->getUpo()));
-            out('UPO saved to: ' . $path);
+            $upo = base64_decode($res->getUpo());
+            out('UPO: ' . htmlspecialchars($upo));
+            $this->save_upo($upo);
         }
     }
 
@@ -1008,7 +1031,7 @@ class Program {
 
         $req = new BoxUploadBatchRequest();
         $req->setUploadId($uploadId);
-        $req->setOffline(true);
+        $req->setOffline(false);
         $req->setNotify(false);
         $req->setUpo(true);
         $req->setInvoiceVersion(KsefInvoiceVersion::V3);
@@ -1032,11 +1055,9 @@ class Program {
         out('Session id: ' . $res->getSessionId());
 
         if ($res->getUpo() !== null) {
-            $path = $this->temp_file('upo-', '.xml');
-            file_put_contents($path, $res->getUpo());
-
-            out('UPO: ' . htmlspecialchars($res->getUpo()));
-            out('UPO saved to: ' . $path);
+            $upo = base64_decode($res->getUpo());
+            out('UPO: ' . htmlspecialchars($upo));
+            $this->save_upo($upo);
         }
     }
 

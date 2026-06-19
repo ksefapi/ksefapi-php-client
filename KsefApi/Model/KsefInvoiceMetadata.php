@@ -1,6 +1,6 @@
 <?php
 /**
- * InvoiceInfo
+ * KsefInvoiceMetadata
  *
  * PHP version 8.1
  *
@@ -32,7 +32,7 @@ use \ArrayAccess;
 use \KsefApi\ObjectSerializer;
 
 /**
- * InvoiceInfo Class Doc Comment
+ * KsefInvoiceMetadata Class Doc Comment
  *
  * @category Class
  * @package  KsefApi
@@ -40,7 +40,7 @@ use \KsefApi\ObjectSerializer;
  * @link     https://openapi-generator.tech
  * @implements \ArrayAccess<string, mixed>
  */
-class InvoiceInfo implements ModelInterface, ArrayAccess, \JsonSerializable
+class KsefInvoiceMetadata implements ModelInterface, ArrayAccess, \JsonSerializable
 {
     public const DISCRIMINATOR = null;
 
@@ -49,7 +49,7 @@ class InvoiceInfo implements ModelInterface, ArrayAccess, \JsonSerializable
      *
      * @var string
      */
-    protected static $openAPIModelName = 'InvoiceInfo';
+    protected static $openAPIModelName = 'KsefInvoiceMetadata';
 
     /**
      * Array of property to type mappings. Used for (de)serialization
@@ -57,10 +57,16 @@ class InvoiceInfo implements ModelInterface, ArrayAccess, \JsonSerializable
      * @var string[]
      */
     protected static $openAPITypes = [
-        'status' => '\KsefApi\Model\StatusInfo',
-        'ordinal' => 'int',
+        'invoice_type' => 'string',
         'invoice_number' => 'string',
         'ksef_number' => 'string',
+        'issue_date' => '\DateTime',
+        'seller' => '\KsefApi\Model\KsefContractor',
+        'buyer' => '\KsefApi\Model\KsefContractor',
+        'currency' => 'string',
+        'net_amount' => 'float',
+        'vat_amount' => 'float',
+        'gross_amount' => 'float',
         'acquisition_date' => '\DateTime',
         'permanent_storage_date' => '\DateTime',
         'invoicing_mode' => 'string'
@@ -74,10 +80,16 @@ class InvoiceInfo implements ModelInterface, ArrayAccess, \JsonSerializable
      * @psalm-var array<string, string|null>
      */
     protected static $openAPIFormats = [
-        'status' => null,
-        'ordinal' => 'int32',
+        'invoice_type' => null,
         'invoice_number' => null,
         'ksef_number' => null,
+        'issue_date' => 'date',
+        'seller' => null,
+        'buyer' => null,
+        'currency' => null,
+        'net_amount' => 'double',
+        'vat_amount' => 'double',
+        'gross_amount' => 'double',
         'acquisition_date' => 'date-time',
         'permanent_storage_date' => 'date-time',
         'invoicing_mode' => null
@@ -89,10 +101,16 @@ class InvoiceInfo implements ModelInterface, ArrayAccess, \JsonSerializable
      * @var boolean[]
      */
     protected static array $openAPINullables = [
-        'status' => false,
-        'ordinal' => false,
+        'invoice_type' => false,
         'invoice_number' => false,
         'ksef_number' => false,
+        'issue_date' => false,
+        'seller' => false,
+        'buyer' => false,
+        'currency' => false,
+        'net_amount' => false,
+        'vat_amount' => false,
+        'gross_amount' => false,
         'acquisition_date' => false,
         'permanent_storage_date' => false,
         'invoicing_mode' => false
@@ -184,10 +202,16 @@ class InvoiceInfo implements ModelInterface, ArrayAccess, \JsonSerializable
      * @var string[]
      */
     protected static $attributeMap = [
-        'status' => 'status',
-        'ordinal' => 'ordinal',
+        'invoice_type' => 'invoiceType',
         'invoice_number' => 'invoiceNumber',
         'ksef_number' => 'ksefNumber',
+        'issue_date' => 'issueDate',
+        'seller' => 'seller',
+        'buyer' => 'buyer',
+        'currency' => 'currency',
+        'net_amount' => 'netAmount',
+        'vat_amount' => 'vatAmount',
+        'gross_amount' => 'grossAmount',
         'acquisition_date' => 'acquisitionDate',
         'permanent_storage_date' => 'permanentStorageDate',
         'invoicing_mode' => 'invoicingMode'
@@ -199,10 +223,16 @@ class InvoiceInfo implements ModelInterface, ArrayAccess, \JsonSerializable
      * @var string[]
      */
     protected static $setters = [
-        'status' => 'setStatus',
-        'ordinal' => 'setOrdinal',
+        'invoice_type' => 'setInvoiceType',
         'invoice_number' => 'setInvoiceNumber',
         'ksef_number' => 'setKsefNumber',
+        'issue_date' => 'setIssueDate',
+        'seller' => 'setSeller',
+        'buyer' => 'setBuyer',
+        'currency' => 'setCurrency',
+        'net_amount' => 'setNetAmount',
+        'vat_amount' => 'setVatAmount',
+        'gross_amount' => 'setGrossAmount',
         'acquisition_date' => 'setAcquisitionDate',
         'permanent_storage_date' => 'setPermanentStorageDate',
         'invoicing_mode' => 'setInvoicingMode'
@@ -214,10 +244,16 @@ class InvoiceInfo implements ModelInterface, ArrayAccess, \JsonSerializable
      * @var string[]
      */
     protected static $getters = [
-        'status' => 'getStatus',
-        'ordinal' => 'getOrdinal',
+        'invoice_type' => 'getInvoiceType',
         'invoice_number' => 'getInvoiceNumber',
         'ksef_number' => 'getKsefNumber',
+        'issue_date' => 'getIssueDate',
+        'seller' => 'getSeller',
+        'buyer' => 'getBuyer',
+        'currency' => 'getCurrency',
+        'net_amount' => 'getNetAmount',
+        'vat_amount' => 'getVatAmount',
+        'gross_amount' => 'getGrossAmount',
         'acquisition_date' => 'getAcquisitionDate',
         'permanent_storage_date' => 'getPermanentStorageDate',
         'invoicing_mode' => 'getInvoicingMode'
@@ -295,10 +331,16 @@ class InvoiceInfo implements ModelInterface, ArrayAccess, \JsonSerializable
      */
     public function __construct(?array $data = null)
     {
-        $this->setIfExists('status', $data ?? [], null);
-        $this->setIfExists('ordinal', $data ?? [], null);
+        $this->setIfExists('invoice_type', $data ?? [], null);
         $this->setIfExists('invoice_number', $data ?? [], null);
         $this->setIfExists('ksef_number', $data ?? [], null);
+        $this->setIfExists('issue_date', $data ?? [], null);
+        $this->setIfExists('seller', $data ?? [], null);
+        $this->setIfExists('buyer', $data ?? [], null);
+        $this->setIfExists('currency', $data ?? [], null);
+        $this->setIfExists('net_amount', $data ?? [], null);
+        $this->setIfExists('vat_amount', $data ?? [], null);
+        $this->setIfExists('gross_amount', $data ?? [], null);
         $this->setIfExists('acquisition_date', $data ?? [], null);
         $this->setIfExists('permanent_storage_date', $data ?? [], null);
         $this->setIfExists('invoicing_mode', $data ?? [], null);
@@ -331,8 +373,44 @@ class InvoiceInfo implements ModelInterface, ArrayAccess, \JsonSerializable
     {
         $invalidProperties = [];
 
-        if ($this->container['status'] === null) {
-            $invalidProperties[] = "'status' can't be null";
+        if ($this->container['invoice_type'] === null) {
+            $invalidProperties[] = "'invoice_type' can't be null";
+        }
+        if ($this->container['invoice_number'] === null) {
+            $invalidProperties[] = "'invoice_number' can't be null";
+        }
+        if ($this->container['ksef_number'] === null) {
+            $invalidProperties[] = "'ksef_number' can't be null";
+        }
+        if ($this->container['issue_date'] === null) {
+            $invalidProperties[] = "'issue_date' can't be null";
+        }
+        if ($this->container['seller'] === null) {
+            $invalidProperties[] = "'seller' can't be null";
+        }
+        if ($this->container['buyer'] === null) {
+            $invalidProperties[] = "'buyer' can't be null";
+        }
+        if ($this->container['currency'] === null) {
+            $invalidProperties[] = "'currency' can't be null";
+        }
+        if ($this->container['net_amount'] === null) {
+            $invalidProperties[] = "'net_amount' can't be null";
+        }
+        if ($this->container['vat_amount'] === null) {
+            $invalidProperties[] = "'vat_amount' can't be null";
+        }
+        if ($this->container['gross_amount'] === null) {
+            $invalidProperties[] = "'gross_amount' can't be null";
+        }
+        if ($this->container['acquisition_date'] === null) {
+            $invalidProperties[] = "'acquisition_date' can't be null";
+        }
+        if ($this->container['permanent_storage_date'] === null) {
+            $invalidProperties[] = "'permanent_storage_date' can't be null";
+        }
+        if ($this->container['invoicing_mode'] === null) {
+            $invalidProperties[] = "'invoicing_mode' can't be null";
         }
         $allowedValues = $this->getInvoicingModeAllowableValues();
         if (!is_null($this->container['invoicing_mode']) && !in_array($this->container['invoicing_mode'], $allowedValues, true)) {
@@ -359,55 +437,28 @@ class InvoiceInfo implements ModelInterface, ArrayAccess, \JsonSerializable
 
 
     /**
-     * Gets status
+     * Gets invoice_type
      *
-     * @return \KsefApi\Model\StatusInfo
+     * @return string
      */
-    public function getStatus()
+    public function getInvoiceType()
     {
-        return $this->container['status'];
+        return $this->container['invoice_type'];
     }
 
     /**
-     * Sets status
+     * Sets invoice_type
      *
-     * @param \KsefApi\Model\StatusInfo $status status
+     * @param string $invoice_type invoice_type
      *
      * @return self
      */
-    public function setStatus($status)
+    public function setInvoiceType($invoice_type)
     {
-        if (is_null($status)) {
-            throw new \InvalidArgumentException('non-nullable status cannot be null');
+        if (is_null($invoice_type)) {
+            throw new \InvalidArgumentException('non-nullable invoice_type cannot be null');
         }
-        $this->container['status'] = $status;
-
-        return $this;
-    }
-
-    /**
-     * Gets ordinal
-     *
-     * @return int|null
-     */
-    public function getOrdinal()
-    {
-        return $this->container['ordinal'];
-    }
-
-    /**
-     * Sets ordinal
-     *
-     * @param int|null $ordinal ordinal
-     *
-     * @return self
-     */
-    public function setOrdinal($ordinal)
-    {
-        if (is_null($ordinal)) {
-            throw new \InvalidArgumentException('non-nullable ordinal cannot be null');
-        }
-        $this->container['ordinal'] = $ordinal;
+        $this->container['invoice_type'] = $invoice_type;
 
         return $this;
     }
@@ -415,7 +466,7 @@ class InvoiceInfo implements ModelInterface, ArrayAccess, \JsonSerializable
     /**
      * Gets invoice_number
      *
-     * @return string|null
+     * @return string
      */
     public function getInvoiceNumber()
     {
@@ -425,7 +476,7 @@ class InvoiceInfo implements ModelInterface, ArrayAccess, \JsonSerializable
     /**
      * Sets invoice_number
      *
-     * @param string|null $invoice_number invoice_number
+     * @param string $invoice_number invoice_number
      *
      * @return self
      */
@@ -442,7 +493,7 @@ class InvoiceInfo implements ModelInterface, ArrayAccess, \JsonSerializable
     /**
      * Gets ksef_number
      *
-     * @return string|null
+     * @return string
      */
     public function getKsefNumber()
     {
@@ -452,7 +503,7 @@ class InvoiceInfo implements ModelInterface, ArrayAccess, \JsonSerializable
     /**
      * Sets ksef_number
      *
-     * @param string|null $ksef_number ksef_number
+     * @param string $ksef_number ksef_number
      *
      * @return self
      */
@@ -467,9 +518,198 @@ class InvoiceInfo implements ModelInterface, ArrayAccess, \JsonSerializable
     }
 
     /**
+     * Gets issue_date
+     *
+     * @return \DateTime
+     */
+    public function getIssueDate()
+    {
+        return $this->container['issue_date'];
+    }
+
+    /**
+     * Sets issue_date
+     *
+     * @param \DateTime $issue_date issue_date
+     *
+     * @return self
+     */
+    public function setIssueDate($issue_date)
+    {
+        if (is_null($issue_date)) {
+            throw new \InvalidArgumentException('non-nullable issue_date cannot be null');
+        }
+        $this->container['issue_date'] = $issue_date;
+
+        return $this;
+    }
+
+    /**
+     * Gets seller
+     *
+     * @return \KsefApi\Model\KsefContractor
+     */
+    public function getSeller()
+    {
+        return $this->container['seller'];
+    }
+
+    /**
+     * Sets seller
+     *
+     * @param \KsefApi\Model\KsefContractor $seller seller
+     *
+     * @return self
+     */
+    public function setSeller($seller)
+    {
+        if (is_null($seller)) {
+            throw new \InvalidArgumentException('non-nullable seller cannot be null');
+        }
+        $this->container['seller'] = $seller;
+
+        return $this;
+    }
+
+    /**
+     * Gets buyer
+     *
+     * @return \KsefApi\Model\KsefContractor
+     */
+    public function getBuyer()
+    {
+        return $this->container['buyer'];
+    }
+
+    /**
+     * Sets buyer
+     *
+     * @param \KsefApi\Model\KsefContractor $buyer buyer
+     *
+     * @return self
+     */
+    public function setBuyer($buyer)
+    {
+        if (is_null($buyer)) {
+            throw new \InvalidArgumentException('non-nullable buyer cannot be null');
+        }
+        $this->container['buyer'] = $buyer;
+
+        return $this;
+    }
+
+    /**
+     * Gets currency
+     *
+     * @return string
+     */
+    public function getCurrency()
+    {
+        return $this->container['currency'];
+    }
+
+    /**
+     * Sets currency
+     *
+     * @param string $currency currency
+     *
+     * @return self
+     */
+    public function setCurrency($currency)
+    {
+        if (is_null($currency)) {
+            throw new \InvalidArgumentException('non-nullable currency cannot be null');
+        }
+        $this->container['currency'] = $currency;
+
+        return $this;
+    }
+
+    /**
+     * Gets net_amount
+     *
+     * @return float
+     */
+    public function getNetAmount()
+    {
+        return $this->container['net_amount'];
+    }
+
+    /**
+     * Sets net_amount
+     *
+     * @param float $net_amount net_amount
+     *
+     * @return self
+     */
+    public function setNetAmount($net_amount)
+    {
+        if (is_null($net_amount)) {
+            throw new \InvalidArgumentException('non-nullable net_amount cannot be null');
+        }
+        $this->container['net_amount'] = $net_amount;
+
+        return $this;
+    }
+
+    /**
+     * Gets vat_amount
+     *
+     * @return float
+     */
+    public function getVatAmount()
+    {
+        return $this->container['vat_amount'];
+    }
+
+    /**
+     * Sets vat_amount
+     *
+     * @param float $vat_amount vat_amount
+     *
+     * @return self
+     */
+    public function setVatAmount($vat_amount)
+    {
+        if (is_null($vat_amount)) {
+            throw new \InvalidArgumentException('non-nullable vat_amount cannot be null');
+        }
+        $this->container['vat_amount'] = $vat_amount;
+
+        return $this;
+    }
+
+    /**
+     * Gets gross_amount
+     *
+     * @return float
+     */
+    public function getGrossAmount()
+    {
+        return $this->container['gross_amount'];
+    }
+
+    /**
+     * Sets gross_amount
+     *
+     * @param float $gross_amount gross_amount
+     *
+     * @return self
+     */
+    public function setGrossAmount($gross_amount)
+    {
+        if (is_null($gross_amount)) {
+            throw new \InvalidArgumentException('non-nullable gross_amount cannot be null');
+        }
+        $this->container['gross_amount'] = $gross_amount;
+
+        return $this;
+    }
+
+    /**
      * Gets acquisition_date
      *
-     * @return \DateTime|null
+     * @return \DateTime
      */
     public function getAcquisitionDate()
     {
@@ -479,7 +719,7 @@ class InvoiceInfo implements ModelInterface, ArrayAccess, \JsonSerializable
     /**
      * Sets acquisition_date
      *
-     * @param \DateTime|null $acquisition_date acquisition_date
+     * @param \DateTime $acquisition_date acquisition_date
      *
      * @return self
      */
@@ -496,7 +736,7 @@ class InvoiceInfo implements ModelInterface, ArrayAccess, \JsonSerializable
     /**
      * Gets permanent_storage_date
      *
-     * @return \DateTime|null
+     * @return \DateTime
      */
     public function getPermanentStorageDate()
     {
@@ -506,7 +746,7 @@ class InvoiceInfo implements ModelInterface, ArrayAccess, \JsonSerializable
     /**
      * Sets permanent_storage_date
      *
-     * @param \DateTime|null $permanent_storage_date permanent_storage_date
+     * @param \DateTime $permanent_storage_date permanent_storage_date
      *
      * @return self
      */
@@ -523,7 +763,7 @@ class InvoiceInfo implements ModelInterface, ArrayAccess, \JsonSerializable
     /**
      * Gets invoicing_mode
      *
-     * @return string|null
+     * @return string
      */
     public function getInvoicingMode()
     {
@@ -533,7 +773,7 @@ class InvoiceInfo implements ModelInterface, ArrayAccess, \JsonSerializable
     /**
      * Sets invoicing_mode
      *
-     * @param string|null $invoicing_mode invoicing_mode
+     * @param string $invoicing_mode invoicing_mode
      *
      * @return self
      */

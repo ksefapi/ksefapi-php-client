@@ -1,6 +1,6 @@
 <?php
 /**
- * DaneKontaktowe
+ * KsefUpoVisualizeRequest
  *
  * PHP version 8.1
  *
@@ -32,16 +32,15 @@ use \ArrayAccess;
 use \KsefApi\ObjectSerializer;
 
 /**
- * DaneKontaktowe Class Doc Comment
+ * KsefUpoVisualizeRequest Class Doc Comment
  *
  * @category Class
- * @description Contact data
  * @package  KsefApi
  * @author   OpenAPI Generator team
  * @link     https://openapi-generator.tech
  * @implements \ArrayAccess<string, mixed>
  */
-class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
+class KsefUpoVisualizeRequest implements ModelInterface, ArrayAccess, \JsonSerializable
 {
     public const DISCRIMINATOR = null;
 
@@ -50,7 +49,7 @@ class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
      *
      * @var string
      */
-    protected static $openAPIModelName = 'DaneKontaktowe';
+    protected static $openAPIModelName = 'KsefUpoVisualizeRequest';
 
     /**
      * Array of property to type mappings. Used for (de)serialization
@@ -58,8 +57,9 @@ class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
      * @var string[]
      */
     protected static $openAPITypes = [
-        'email' => 'string',
-        'telefon' => 'string'
+        'upo_data' => 'string',
+        'output_format' => 'string',
+        'output_language' => 'string'
     ];
 
     /**
@@ -70,8 +70,9 @@ class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
      * @psalm-var array<string, string|null>
      */
     protected static $openAPIFormats = [
-        'email' => null,
-        'telefon' => null
+        'upo_data' => 'byte',
+        'output_format' => null,
+        'output_language' => null
     ];
 
     /**
@@ -80,8 +81,9 @@ class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
      * @var boolean[]
      */
     protected static array $openAPINullables = [
-        'email' => false,
-        'telefon' => false
+        'upo_data' => false,
+        'output_format' => false,
+        'output_language' => false
     ];
 
     /**
@@ -170,8 +172,9 @@ class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
      * @var string[]
      */
     protected static $attributeMap = [
-        'email' => 'Email',
-        'telefon' => 'Telefon'
+        'upo_data' => 'upoData',
+        'output_format' => 'outputFormat',
+        'output_language' => 'outputLanguage'
     ];
 
     /**
@@ -180,8 +183,9 @@ class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
      * @var string[]
      */
     protected static $setters = [
-        'email' => 'setEmail',
-        'telefon' => 'setTelefon'
+        'upo_data' => 'setUpoData',
+        'output_format' => 'setOutputFormat',
+        'output_language' => 'setOutputLanguage'
     ];
 
     /**
@@ -190,8 +194,9 @@ class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
      * @var string[]
      */
     protected static $getters = [
-        'email' => 'getEmail',
-        'telefon' => 'getTelefon'
+        'upo_data' => 'getUpoData',
+        'output_format' => 'getOutputFormat',
+        'output_language' => 'getOutputLanguage'
     ];
 
     /**
@@ -235,6 +240,34 @@ class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
         return self::$openAPIModelName;
     }
 
+    public const OUTPUT_FORMAT_PDF = 'pdf';
+    public const OUTPUT_LANGUAGE_EN = 'en';
+    public const OUTPUT_LANGUAGE_PL = 'pl';
+
+    /**
+     * Gets allowable values of the enum
+     *
+     * @return string[]
+     */
+    public function getOutputFormatAllowableValues()
+    {
+        return [
+            self::OUTPUT_FORMAT_PDF,
+        ];
+    }
+
+    /**
+     * Gets allowable values of the enum
+     *
+     * @return string[]
+     */
+    public function getOutputLanguageAllowableValues()
+    {
+        return [
+            self::OUTPUT_LANGUAGE_EN,
+            self::OUTPUT_LANGUAGE_PL,
+        ];
+    }
 
     /**
      * Associative array for storing property values
@@ -251,8 +284,9 @@ class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
      */
     public function __construct(?array $data = null)
     {
-        $this->setIfExists('email', $data ?? [], null);
-        $this->setIfExists('telefon', $data ?? [], null);
+        $this->setIfExists('upo_data', $data ?? [], null);
+        $this->setIfExists('output_format', $data ?? [], null);
+        $this->setIfExists('output_language', $data ?? [], null);
     }
 
     /**
@@ -282,20 +316,31 @@ class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
     {
         $invalidProperties = [];
 
-        if (!is_null($this->container['email']) && (mb_strlen($this->container['email']) > 255)) {
-            $invalidProperties[] = "invalid value for 'email', the character length must be smaller than or equal to 255.";
+        if ($this->container['upo_data'] === null) {
+            $invalidProperties[] = "'upo_data' can't be null";
+        }
+        if ($this->container['output_format'] === null) {
+            $invalidProperties[] = "'output_format' can't be null";
+        }
+        $allowedValues = $this->getOutputFormatAllowableValues();
+        if (!is_null($this->container['output_format']) && !in_array($this->container['output_format'], $allowedValues, true)) {
+            $invalidProperties[] = sprintf(
+                "invalid value '%s' for 'output_format', must be one of '%s'",
+                $this->container['output_format'],
+                implode("', '", $allowedValues)
+            );
         }
 
-        if (!is_null($this->container['email']) && (mb_strlen($this->container['email']) < 3)) {
-            $invalidProperties[] = "invalid value for 'email', the character length must be bigger than or equal to 3.";
+        if ($this->container['output_language'] === null) {
+            $invalidProperties[] = "'output_language' can't be null";
         }
-
-        if (!is_null($this->container['email']) && !preg_match("/^(.)+@(.)+$/", $this->container['email'])) {
-            $invalidProperties[] = "invalid value for 'email', must be conform to the pattern /^(.)+@(.)+$/.";
-        }
-
-        if (!is_null($this->container['telefon']) && (mb_strlen($this->container['telefon']) > 16)) {
-            $invalidProperties[] = "invalid value for 'telefon', the character length must be smaller than or equal to 16.";
+        $allowedValues = $this->getOutputLanguageAllowableValues();
+        if (!is_null($this->container['output_language']) && !in_array($this->container['output_language'], $allowedValues, true)) {
+            $invalidProperties[] = sprintf(
+                "invalid value '%s' for 'output_language', must be one of '%s'",
+                $this->container['output_language'],
+                implode("', '", $allowedValues)
+            );
         }
 
         return $invalidProperties;
@@ -314,69 +359,102 @@ class DaneKontaktowe implements ModelInterface, ArrayAccess, \JsonSerializable
 
 
     /**
-     * Gets email
+     * Gets upo_data
      *
-     * @return string|null
+     * @return string
      */
-    public function getEmail()
+    public function getUpoData()
     {
-        return $this->container['email'];
+        return $this->container['upo_data'];
     }
 
     /**
-     * Sets email
+     * Sets upo_data
      *
-     * @param string|null $email Email address
+     * @param string $upo_data UPO XML as Base64 string
      *
      * @return self
      */
-    public function setEmail($email)
+    public function setUpoData($upo_data)
     {
-        if (is_null($email)) {
-            throw new \InvalidArgumentException('non-nullable email cannot be null');
+        if (is_null($upo_data)) {
+            throw new \InvalidArgumentException('non-nullable upo_data cannot be null');
         }
-        if ((mb_strlen($email) > 255)) {
-            throw new \InvalidArgumentException('invalid length for $email when calling DaneKontaktowe., must be smaller than or equal to 255.');
-        }
-        if ((mb_strlen($email) < 3)) {
-            throw new \InvalidArgumentException('invalid length for $email when calling DaneKontaktowe., must be bigger than or equal to 3.');
-        }
-        if ((!preg_match("/^(.)+@(.)+$/", ObjectSerializer::toString($email)))) {
-            throw new \InvalidArgumentException("invalid value for \$email when calling DaneKontaktowe., must conform to the pattern /^(.)+@(.)+$/.");
-        }
-
-        $this->container['email'] = $email;
+        $this->container['upo_data'] = $upo_data;
 
         return $this;
     }
 
     /**
-     * Gets telefon
+     * Gets output_format
      *
-     * @return string|null
+     * @return string
      */
-    public function getTelefon()
+    public function getOutputFormat()
     {
-        return $this->container['telefon'];
+        return $this->container['output_format'];
     }
 
     /**
-     * Sets telefon
+     * Sets output_format
      *
-     * @param string|null $telefon Phone number
+     * @param string $output_format output_format
      *
      * @return self
      */
-    public function setTelefon($telefon)
+    public function setOutputFormat($output_format)
     {
-        if (is_null($telefon)) {
-            throw new \InvalidArgumentException('non-nullable telefon cannot be null');
+        if (is_null($output_format)) {
+            throw new \InvalidArgumentException('non-nullable output_format cannot be null');
         }
-        if ((mb_strlen($telefon) > 16)) {
-            throw new \InvalidArgumentException('invalid length for $telefon when calling DaneKontaktowe., must be smaller than or equal to 16.');
+        $allowedValues = $this->getOutputFormatAllowableValues();
+        if (!in_array($output_format, $allowedValues, true)) {
+            throw new \InvalidArgumentException(
+                sprintf(
+                    "Invalid value '%s' for 'output_format', must be one of '%s'",
+                    $output_format,
+                    implode("', '", $allowedValues)
+                )
+            );
         }
+        $this->container['output_format'] = $output_format;
 
-        $this->container['telefon'] = $telefon;
+        return $this;
+    }
+
+    /**
+     * Gets output_language
+     *
+     * @return string
+     */
+    public function getOutputLanguage()
+    {
+        return $this->container['output_language'];
+    }
+
+    /**
+     * Sets output_language
+     *
+     * @param string $output_language output_language
+     *
+     * @return self
+     */
+    public function setOutputLanguage($output_language)
+    {
+        if (is_null($output_language)) {
+            throw new \InvalidArgumentException('non-nullable output_language cannot be null');
+        }
+        $allowedValues = $this->getOutputLanguageAllowableValues();
+        if (!in_array($output_language, $allowedValues, true)) {
+            throw new \InvalidArgumentException(
+                sprintf(
+                    "Invalid value '%s' for 'output_language', must be one of '%s'",
+                    $output_language,
+                    implode("', '", $allowedValues)
+                )
+            );
+        }
+        $this->container['output_language'] = $output_language;
 
         return $this;
     }
