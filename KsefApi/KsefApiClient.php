@@ -66,7 +66,7 @@ use SplFileObject;
  */
 class KsefApiClient
 {
-    const VERSION = '2.0.6';
+    const VERSION = '2.0.7';
 
     const PRODUCTION_URL = 'https://ksefapi.pl/api';
     const TEST_URL = 'https://ksefapi.pl/api-test';
@@ -684,8 +684,8 @@ class KsefApiClient
         // send request
         $url = ($this->url . '/invoice/query/result/' . urlencode($queryId) . '/' . urlencode($partNumber));
 
-        $res = $this->send($url, null, null, array('application/octet-stream', 'application/json'));
-        if (! $res) {
+        $res = $this->send($url, null, null, array('application/octet-stream', 'application/json'), true);
+        if ($res === false) {
             return false;
         }
 
@@ -958,8 +958,8 @@ class KsefApiClient
         // send request
         $url = ($this->url . '/box/download/invoices/' . urlencode($downloadId));
 
-        $res = $this->send($url, null, null, array('application/zip', 'application/json'));
-        if (! $res) {
+        $res = $this->send($url, null, null, array('application/zip', 'application/json'), true);
+        if ($res === false) {
             return false;
         }
 
@@ -1126,9 +1126,10 @@ class KsefApiClient
      * @param string|null $type request content type (null for GET)
      * @param string|array|null $body request body (null for GET)
      * @param array $accept requested response MIME types
+     * @param bool $emptyOk true if empty result is acceptable
      * @return string|false
      */
-    private function send(string $url, string|null $type, string|array|null $body, array $accept): string|false
+    private function send(string $url, string|null $type, string|array|null $body, array $accept, bool $emptyOk = false): string|false
     {
         // auth
         $auth = $this->auth();
@@ -1224,7 +1225,7 @@ class KsefApiClient
         $this->setCurlOpt($curl);
         $res = curl_exec($curl);
 
-        if (! $res) {
+        if ($res === false) {
             $this->set(ClientError::CLI_CONNECT, null, curl_error($curl));
             return false;
         }
@@ -1252,6 +1253,11 @@ class KsefApiClient
                 $this->set(ClientError::CLI_RESPONSE);
             }
 
+            return false;
+        }
+
+        if (!$res && !$emptyOk) {
+            $this->set(ClientError::CLI_RESPONSE);
             return false;
         }
 

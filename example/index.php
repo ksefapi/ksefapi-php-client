@@ -875,10 +875,14 @@ class Program {
                 $this->fail('ksefInvoiceQueryResult failed');
             }
 
-            $path = $this->temp_file('invoices-', '.zip.enc');
-            file_put_contents($path, $data);
+            if (!$data) {
+                out('No invoices found');
+            } else {
+                $path = $this->temp_file('invoices-', '.zip.enc');
+                file_put_contents($path, $data);
 
-            out('Encrypted part saved to: ' . $path);
+                out('Encrypted part saved to: ' . $path);
+            }
         }
     }
 
@@ -1093,12 +1097,16 @@ class Program {
             $this->fail('boxDownloadInvoicesResult failed');
         }
 
-        // res buffer contains the bytes of a plain, unencrypted ZIP archive that includes the invoices
-        // and a metadata file
-        $path = $this->temp_file('invoices-', '.zip');
-        file_put_contents($path, $res);
+        if (!$res) {
+            out('No invoices found');
+        } else {
+            // res buffer contains the bytes of a plain, unencrypted ZIP archive that includes the invoices
+            // and a metadata file
+            $path = $this->temp_file('invoices-', '.zip');
+            file_put_contents($path, $res);
 
-        out('Invoices saved to: ' . $path);
+            out('Invoices saved to: ' . $path);
+        }
     }
 }
 

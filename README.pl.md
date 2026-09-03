@@ -24,6 +24,15 @@ ustrukturyzowanych faktur elektronicznych, zarządzanego przez Ministerstwo Fina
 * Wizualizacja faktur KSeF (XML) w formacie PDF lub HTML (z wymaganymi kodami QR).
 * Unikalne rozwiązanie typu black-box do wdrożenia dedykowanej bramki KSeF we własnym środowisku.
 
+## How to use
+
+Wersja release biblioteki jest opublikowana w [Packagist](https://packagist.org/packages/ksefapi/client).
+Do docelowego projektu można dodać bibliotekę używając narzędzia _composer_:
+
+```bash
+composer require ksefapi/client
+```
+
 # Licencja
 
 Ten projekt jest udostępniony na licencji Apache License, Version 2.0:

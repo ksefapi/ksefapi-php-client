@@ -24,6 +24,15 @@ of structured electronic invoices managed by the Ministry of Finance.
 * Visualization of invoices in PDF or HTML format (including required QR codes).
 * A unique black-box solution for deploying a dedicated KSeF gateway on your own platform.
 
+## How to use
+
+The release version of the library is published in [Packagist](https://packagist.org/packages/ksefapi/client).
+Add the following dependency using the _composer_ tool:
+
+```bash
+composer require ksefapi/client
+```
+
 # License
 
 This project is delivered under Apache License, Version 2.0:

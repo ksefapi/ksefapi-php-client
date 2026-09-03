@@ -1,7 +1,7 @@
 {
   "name": "ksefapi/client",
   "description": "KSEF API Client for PHP",
-  "version": "2.0.6",
+  "version": "2.0.7",
   "type": "library",
   "keywords": [
     "ksef",
@@ -30,6 +30,6 @@
     "ext-curl": "*",
     "ext-json": "*",
     "ext-mbstring": "*",
-    "phpseclib/phpseclib": "^3.0.55"
+    "phpseclib/phpseclib": "^3.0.56"
   }
 }
